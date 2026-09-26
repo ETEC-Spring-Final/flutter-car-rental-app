@@ -62,8 +62,12 @@ class HomeBloc extends Bloc<HomeEvent, HomeState> {
     HomeRefreshed event,
     Emitter<HomeState> emit,
   ) async {
-    // No loading state here: the pull to refresh indicator is the feedback and
-    // the screen keeps showing the pages it already has.
+    // The pages already on screen stay visible; the pull to refresh indicator
+    // is the only feedback, held open by the flag until the new ones land.
+    if (state is HomeLoaded) {
+      emit((state as HomeLoaded).copyWith(isRefreshing: true));
+    }
+
     await _loadFirstPage(emit);
   }
 
@@ -99,6 +103,14 @@ class HomeBloc extends Bloc<HomeEvent, HomeState> {
             .toNullable()!;
 
         emit(HomeError(failure.message));
+      } else {
+        // A failed refresh keeps the content it had, but the flag has to come
+        // down or the pull to refresh spinner would never stop.
+        final latest = state;
+
+        if (latest is HomeLoaded && latest.isRefreshing) {
+          emit(latest.copyWith(isRefreshing: false));
+        }
       }
 
       return;

@@ -46,6 +46,11 @@ class HomeLoaded extends HomeState {
   final bool isLoadingMoreVehicles;
   final bool isLoadingMoreBrands;
 
+  /// True from the moment a pull to refresh is accepted until its pages have
+  /// arrived. Unlike [isLoadingVehicles] the content stays on screen, so the
+  /// screen can hold the pull to refresh indicator open for the whole request.
+  final bool isRefreshing;
+
   /// Totals across every page, used for the "no cars" check and the counter.
   final int totalVehicles;
   final int totalBrands;
@@ -63,6 +68,7 @@ class HomeLoaded extends HomeState {
     this.isLoadingVehicles = false,
     this.isLoadingMoreVehicles = false,
     this.isLoadingMoreBrands = false,
+    this.isRefreshing = false,
     required this.totalVehicles,
     required this.totalBrands,
     this.reservationCounts = const {},
@@ -105,6 +111,7 @@ class HomeLoaded extends HomeState {
     bool? isLoadingVehicles,
     bool? isLoadingMoreVehicles,
     bool? isLoadingMoreBrands,
+    bool? isRefreshing,
     int? totalVehicles,
     int? totalBrands,
     Map<int, int>? reservationCounts,
@@ -120,6 +127,7 @@ class HomeLoaded extends HomeState {
       isLoadingVehicles: isLoadingVehicles ?? this.isLoadingVehicles,
       isLoadingMoreVehicles: isLoadingMoreVehicles ?? this.isLoadingMoreVehicles,
       isLoadingMoreBrands: isLoadingMoreBrands ?? this.isLoadingMoreBrands,
+      isRefreshing: isRefreshing ?? this.isRefreshing,
       totalVehicles: totalVehicles ?? this.totalVehicles,
       totalBrands: totalBrands ?? this.totalBrands,
       reservationCounts: reservationCounts ?? this.reservationCounts,
@@ -136,6 +144,7 @@ class HomeLoaded extends HomeState {
     isLoadingVehicles,
     isLoadingMoreVehicles,
     isLoadingMoreBrands,
+    isRefreshing,
     totalVehicles,
     totalBrands,
     reservationCounts,

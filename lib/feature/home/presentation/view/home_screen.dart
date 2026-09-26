@@ -114,8 +114,22 @@ class _HomeScreenState extends State<HomeScreen>
   // REFRESH
   // ============================================================
 
+  /// Waits for the reload to actually land.
+  ///
+  /// The event alone is not enough: the pull to refresh control holds its
+  /// spinner for as long as this future runs, and adding an event returns
+  /// immediately, which would flash the indicator and hide it before the
+  /// pages arrive.
   Future<void> refreshData() async {
-    context.read<HomeBloc>().add(const HomeRefreshed());
+    final bloc = context.read<HomeBloc>();
+
+    final settled = bloc.stream.firstWhere(
+      (state) => state is! HomeLoaded || !state.isRefreshing,
+    );
+
+    bloc.add(const HomeRefreshed());
+
+    await settled;
   }
 
   @override
@@ -234,6 +248,9 @@ class _HomeScreenState extends State<HomeScreen>
                 // ========================================================
                 // PULL TO REFRESH
                 // ========================================================
+                // There is no Material equivalent of this sliver: a Material
+                // app would wrap the whole CustomScrollView in a
+                // RefreshIndicator instead, which needs no reordering here.
                 CupertinoSliverRefreshControl(
                   onRefresh: refreshData,
 
@@ -318,7 +335,12 @@ class _HomeScreenState extends State<HomeScreen>
                                   controller: _brandScrollController,
 
                                   scrollDirection: Axis.horizontal,
-                                  physics: const BouncingScrollPhysics(),
+              // AlwaysScrollable so a short page is still pullable, and
+              // Bouncing so the overscroll the refresh control reacts to is
+              // actually allowed.
+              physics: const AlwaysScrollableScrollPhysics(
+                parent: BouncingScrollPhysics(),
+              ),
 
                                   padding: EdgeInsets.symmetric(
                                     horizontal: AppDimensions.space12,
