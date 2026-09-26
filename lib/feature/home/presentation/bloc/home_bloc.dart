@@ -122,6 +122,57 @@ class HomeBloc extends Bloc<HomeEvent, HomeState> {
         totalBrands: brandPage.totalItems,
       ),
     );
+
+    await _addReservationCounts(vehiclePage.items, generation, emit);
+  }
+
+  // ============================================================
+  // RESERVATION COUNTS (what makes a vehicle "popular")
+  // ============================================================
+
+  /// Fills in how many active reservation windows each of [vehicles] has and
+  /// emits the merged totals.
+  ///
+  /// `GET /vehicles/{id}/booked-dates` is the only reservation-derived signal a
+  /// customer token is allowed to read: `GET /rentals` and `GET /reservations`
+  /// are staff only, so a global booking count cannot be read from the client.
+  /// It costs one request per vehicle, the same N+1 the vehicle list already
+  /// makes to resolve its images.
+  Future<void> _addReservationCounts(
+    List<Vehicle> vehicles,
+    int generation,
+    Emitter<HomeState> emit,
+  ) async {
+    if (vehicles.isEmpty) return;
+
+    final results = await Future.wait([
+      for (final vehicle in vehicles)
+        repository.getVehicleBookedDates(vehicle.id).then(
+          (result) => result.fold(
+            // A vehicle we cannot count is still worth showing, it just ranks
+            // as if nobody had reserved it.
+            (failure) => const <int, int>{},
+            (dates) => <int, int>{vehicle.id: dates.length},
+          ),
+        ),
+    ]);
+
+    // A newer request took over, or this handler is already done emitting.
+    if (generation != _generation || emit.isDone) return;
+
+    final current = state;
+    if (current is! HomeLoaded) return;
+
+    final counts = <int, int>{};
+    for (final result in results) {
+      counts.addAll(result);
+    }
+
+    emit(
+      current.copyWith(
+        reservationCounts: {...current.reservationCounts, ...counts},
+      ),
+    );
   }
 
   // ============================================================
@@ -151,21 +202,26 @@ class HomeBloc extends Bloc<HomeEvent, HomeState> {
 
     if (generation != _generation) return;
 
-    result.fold(
-      (failure) => emit(current.copyWith(isLoadingMoreVehicles: false)),
-      (page) {
-        _vehiclePage++;
+    if (result.isLeft()) {
+      emit(current.copyWith(isLoadingMoreVehicles: false));
+      return;
+    }
 
-        emit(
-          current.copyWith(
-            vehicles: [...current.vehicles, ...page.items],
-            hasMoreVehicles: page.hasMore,
-            isLoadingMoreVehicles: false,
-            totalVehicles: page.totalItems,
-          ),
-        );
-      },
+    final page = result.getRight().toNullable()!;
+
+    _vehiclePage++;
+
+    emit(
+      current.copyWith(
+        vehicles: [...current.vehicles, ...page.items],
+        hasMoreVehicles: page.hasMore,
+        isLoadingMoreVehicles: false,
+        totalVehicles: page.totalItems,
+      ),
     );
+
+    // Only the newly appended cars are uncounted, so only they are fetched.
+    await _addReservationCounts(page.items, generation, emit);
   }
 
   Future<void> _onLoadMoreBrands(
@@ -249,20 +305,27 @@ class HomeBloc extends Bloc<HomeEvent, HomeState> {
 
     if (base is! HomeLoaded) return;
 
-    result.fold(
-      (failure) => emit(base.copyWith(isLoadingVehicles: false)),
-      (page) {
-        _vehiclePage = 1;
+    if (result.isLeft()) {
+      emit(base.copyWith(isLoadingVehicles: false));
+      return;
+    }
 
-        emit(
-          base.copyWith(
-            vehicles: page.items,
-            hasMoreVehicles: page.hasMore,
-            isLoadingVehicles: false,
-            totalVehicles: page.totalItems,
-          ),
-        );
-      },
+    final page = result.getRight().toNullable()!;
+
+    _vehiclePage = 1;
+
+    emit(
+      base.copyWith(
+        vehicles: page.items,
+        hasMoreVehicles: page.hasMore,
+        isLoadingVehicles: false,
+        totalVehicles: page.totalItems,
+        // The new brand is a different set of cars, so the old counts would
+        // describe vehicles that are no longer on screen.
+        reservationCounts: const {},
+      ),
     );
+
+    await _addReservationCounts(page.items, generation, emit);
   }
 }

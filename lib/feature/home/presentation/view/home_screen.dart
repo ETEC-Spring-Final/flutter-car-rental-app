@@ -475,7 +475,9 @@ class _HomeScreenState extends State<HomeScreen>
                               }
 
                               return PopularCarsSection(
-                                vehicles: state.vehicles,
+                                // Ranked by reservation count, unlike the
+                                // recommended section which keeps API order.
+                                vehicles: state.popularVehicles,
 
                                 controller: _popularScrollController,
 

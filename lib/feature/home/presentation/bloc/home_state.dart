@@ -50,6 +50,10 @@ class HomeLoaded extends HomeState {
   final int totalVehicles;
   final int totalBrands;
 
+  /// Number of active reservation windows per vehicle id, for the vehicles
+  /// loaded so far. See `HomeBloc` for why this is fetched per vehicle.
+  final Map<int, int> reservationCounts;
+
   const HomeLoaded({
     required this.vehicles,
     required this.brands,
@@ -61,11 +65,35 @@ class HomeLoaded extends HomeState {
     this.isLoadingMoreBrands = false,
     required this.totalVehicles,
     required this.totalBrands,
+    this.reservationCounts = const {},
   });
 
   /// True when the API has no vehicle for the active brand at all, which is
   /// different from "the loaded pages happen to be empty".
   bool get hasNoVehicles => !isLoadingVehicles && totalVehicles == 0;
+
+  /// [vehicles] ordered by how often they have been reserved, which is what
+  /// the popular section shows.
+  ///
+  /// Derived from the loaded pages rather than paged on its own, so popular
+  /// and recommended always cover the same vehicles. A vehicle whose count has
+  /// not arrived yet counts as zero, and ties keep the API order, so the
+  /// section is already correct before the counts land and only refines after.
+  List<Vehicle> get popularVehicles {
+    if (reservationCounts.isEmpty) return vehicles;
+
+    final ranked = [...vehicles.indexed]..sort((a, b) {
+      final byReservations = _reservationsFor(
+        b.$2.id,
+      ).compareTo(_reservationsFor(a.$2.id));
+
+      return byReservations != 0 ? byReservations : a.$1.compareTo(b.$1);
+    });
+
+    return [for (final (_, vehicle) in ranked) vehicle];
+  }
+
+  int _reservationsFor(int vehicleId) => reservationCounts[vehicleId] ?? 0;
 
   HomeLoaded copyWith({
     List<Vehicle>? vehicles,
@@ -79,6 +107,7 @@ class HomeLoaded extends HomeState {
     bool? isLoadingMoreBrands,
     int? totalVehicles,
     int? totalBrands,
+    Map<int, int>? reservationCounts,
   }) {
     return HomeLoaded(
       vehicles: vehicles ?? this.vehicles,
@@ -93,6 +122,7 @@ class HomeLoaded extends HomeState {
       isLoadingMoreBrands: isLoadingMoreBrands ?? this.isLoadingMoreBrands,
       totalVehicles: totalVehicles ?? this.totalVehicles,
       totalBrands: totalBrands ?? this.totalBrands,
+      reservationCounts: reservationCounts ?? this.reservationCounts,
     );
   }
 
@@ -108,5 +138,6 @@ class HomeLoaded extends HomeState {
     isLoadingMoreBrands,
     totalVehicles,
     totalBrands,
+    reservationCounts,
   ];
 }
