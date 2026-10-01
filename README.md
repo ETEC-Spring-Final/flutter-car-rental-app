@@ -57,22 +57,26 @@ Customers can browse vehicles, filter and search by brand, type, or model, view 
       <img src="docs/screenshots/vehicle_detail_2.png" width="180">
     </td>
     <td align="center">
+      <strong>View Image</strong><br>
+      <img src="docs/screenshots/view_image.png" width="180">
+    </td>
+    <td align="center">
       <strong>Booking / Rental</strong><br>
       <img src="docs/screenshots/booking.png" width="180">
     </td>
     <td align="center">
-      <strong>Booking / Pick Date</strong><br>
+      <strong>Booking / PickDate</strong><br>
       <img src="docs/screenshots/booking_2.png" width="180">
-    </td>
-    <td align="center">
-      <strong>Booking / Pick Time</strong><br>
-      <img src="docs/screenshots/booking_3.png" width="180">
     </td>
   </tr>
 
   <tr>
     <td align="center">
-      <strong>Booking / Rental 4</strong><br>
+      <strong>Booking / PickTime</strong><br>
+      <img src="docs/screenshots/booking_3.png" width="180">
+    </td>
+    <td align="center">
+      <strong>Booking / Rental</strong><br>
       <img src="docs/screenshots/booking_4.png" width="180">
     </td>
     <td align="center">
@@ -83,13 +87,13 @@ Customers can browse vehicles, filter and search by brand, type, or model, view 
       <strong>Additional Service</strong><br>
       <img src="docs/screenshots/service.png" width="180">
     </td>
+  </tr>
+
+  <tr>
     <td align="center">
       <strong>Payment (KHQR)</strong><br>
       <img src="docs/screenshots/payment.png" width="180">
     </td>
-  </tr>
-
-  <tr>
     <td align="center">
       <strong>Generate QR (KHQR)</strong><br>
       <img src="docs/screenshots/qrcode.png" width="180">
@@ -102,13 +106,13 @@ Customers can browse vehicles, filter and search by brand, type, or model, view 
       <strong>Booking Complete 2</strong><br>
       <img src="docs/screenshots/complete_2.png" width="180">
     </td>
+  </tr>
+
+  <tr>
     <td align="center">
       <strong>Booking History</strong><br>
       <img src="docs/screenshots/booking_history.png" width="180">
     </td>
-  </tr>
-
-  <tr>
     <td align="center">
       <strong>Favorites</strong><br>
       <img src="docs/screenshots/favorite.png" width="180">
