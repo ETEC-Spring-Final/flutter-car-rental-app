@@ -12,30 +12,30 @@ Customers can browse vehicles, filter and search by brand, type, or model, view 
 
 ## 📸 docs/Screenshots
 
-| Screen                 | Image                                                             |
-| ---------------------- | ----------------------------------------------------------------- |
-| splash                 | `![Splash Screen](docs/screenshots/splash.png)`                   |
-| Onboarding             | `![Onboarding Screen](docs/screenshots/onboarding.png)`           |
-| Onboarding             | `![Onboarding Screen](docs/screenshots/onboarding_2.png)`         |
-| Login                  | `![Login Screen](docs/screenshots/login.png)`                     |
-| Register               | `![Register Screen](docs/screenshots/register.png)`               |
-| Home                   | `![Home Screen](docs/screenshots/home.png)`                       |
-| Explore / Vehicle List | `![Explore Screen](docs/screenshots/explore.png)`                 |
-| Vehicle Detail         | `![Vehicle Detail Screen](docs/screenshots/vehicle_detail.png)`   |
-| Vehicle Detail         | `![Vehicle Detail Screen](docs/screenshots/vehicle_detail_2.png)` |
-| Booking / Rental       | `![Booking Screen](docs/screenshots/booking.png)`                 |
-| Booking / PickDate     | `![Booking Screen](docs/screenshots/booking_2.png)`               |
-| Booking / PickTime     | `![Booking Screen](docs/screenshots/booking_3.png)`               |
-| Booking / Rental       | `![Booking Screen](docs/screenshots/booking_4.png)`               |
-| Additional Service     | `![Service Screen](docs/screenshots/service.png)`                 |
-| Payment (KHQR)         | `![Payment Screen](docs/screenshots/payment.png)`                 |
-| Generate QR (KHQR)     | `![QRCode Screen](docs/screenshots/qrcode.png)`                   |
-| Booking Complete       | `![Complete Screen](docs/screenshots/complete.png)`               |
-| Booking Complete       | `![Complete Screen](docs/screenshots/complete_2.png)`             |
-| Booking History        | `![Booking History Screen](docs/screenshots/booking_history.png)` |
-| Favorites              | `![Favorite Screen](docs/screenshots/favorite.png)`               |
-| Profile                | `![Profile Screen](docs/screenshots/profile.png)`                 |
-| Shimmer                | `![Shimmer Screen](docs/screenshots/shimmer.png)`                 |
+| Screen | Image |
+|---|---|
+| Splash | ![Splash Screen](docs/screenshots/splash.png)                             |
+| Onboarding | ![Onboarding Screen](docs/screenshots/onboarding.png)                 |
+| Onboarding | ![Onboarding Screen](docs/screenshots/onboarding_2.png)               |
+| Login | ![Login Screen](docs/screenshots/login.png)                                |
+| Register | ![Register Screen](docs/screenshots/register.png)                       |
+| Home | ![Home Screen](docs/screenshots/home.png)                                   |
+| Explore / Vehicle List | ![Explore Screen](docs/screenshots/explore.png)           |
+| Vehicle Detail | ![Vehicle Detail Screen](docs/screenshots/vehicle_detail.png)     |
+| Vehicle Detail | ![Vehicle Detail Screen](docs/screenshots/vehicle_detail_2.png)   |
+| Booking / Rental | ![Booking Screen](docs/screenshots/booking.png)                 |
+| Booking / PickDate | ![Booking Screen](docs/screenshots/booking_2.png)             |
+| Booking / PickTime | ![Booking Screen](docs/screenshots/booking_3.png)             |
+| Booking / Rental | ![Booking Screen](docs/screenshots/booking_4.png)               |
+| Additional Service | ![Service Screen](docs/screenshots/service.png)               |
+| Payment (KHQR) | ![Payment Screen](docs/screenshots/payment.png)                   |
+| Generate QR (KHQR) | ![QRCode Screen](docs/screenshots/qrcode.png)                 |
+| Booking Complete | ![Complete Screen](docs/screenshots/complete.png)               |
+| Booking Complete | ![Complete Screen](docs/screenshots/complete_2.png)             |
+| Booking History | ![Booking History Screen](docs/screenshots/booking_history.png)  |
+| Favorites | ![Favorite Screen](docs/screenshots/favorite.png)                      |
+| Profile | ![Profile Screen](docs/screenshots/profile.png)                          |
+| Shimmer | ![Shimmer Screen](docs/screenshots/shimmer.png)                          |
 
 ---
 
