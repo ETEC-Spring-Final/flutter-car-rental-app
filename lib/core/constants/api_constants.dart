@@ -12,10 +12,10 @@ class ApiConstants {
 
   // use with real device
 
-  // static String baseUrl = String.fromEnvironment(
-  //   apiBaseUrl,
-  //   defaultValue: 'http://172.20.10.11:8080/api',
-  // );
+  //   static String baseUrl = String.fromEnvironment(
+  //     apiBaseUrl,
+  //     defaultValue: 'http://192.168.1.37:8080/api',
+  //   );
 
   // static String baseUrl = String.fromEnvironment(
   //   apiBaseUrl,

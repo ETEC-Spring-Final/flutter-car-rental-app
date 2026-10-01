@@ -171,13 +171,12 @@ class _LoginScreenState extends State<LoginScreen> {
                 // ==================================================
                 Row(
                   children: [
-                    AppCircleBtn(
-                      icon: Icons.arrow_back_rounded,
-                      onTap: () => context.pop(),
-                      backgroundColor: colorScheme.surfaceContainerHighest,
-                      iconColor: colorScheme.onSurface,
-                    ),
-
+                    // AppCircleBtn(
+                    //   icon: Icons.arrow_back_rounded,
+                    //   onTap: () => context.pop(),
+                    //   backgroundColor: colorScheme.surfaceContainerHighest,
+                    //   iconColor: colorScheme.onSurface,
+                    // ),
                     const Spacer(),
 
                     Container(
@@ -201,7 +200,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           SizedBox(width: 6.w),
 
                           Text(
-                            'AUTO RENT',
+                            'AUTO RENT Premium',
                             style: theme.textTheme.labelSmall?.copyWith(
                               color: colorScheme.primary,
                               fontWeight: FontWeight.w800,
