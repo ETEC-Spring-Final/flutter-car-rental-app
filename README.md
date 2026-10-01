@@ -1,6 +1,6 @@
 # Car Rental App (Auto Rent Premium)🚗
 
-A **full-stack vehicle rental application** built with a Flutter mobile frontend and a Spring Boot REST backend.
+A **full-stack car rental application** built with a Flutter mobile frontend and a Spring Boot REST backend.
 
 Customers can browse vehicles, filter and search by brand, type, or model, view details and photos, save favorites, pick rental dates and durations, create reservations, and pay using **KHQR / Bakong**.
 
