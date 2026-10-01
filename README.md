@@ -14,7 +14,7 @@ Customers can browse vehicles, filter and search by brand, type, or model, view 
 
 | Screen                 | Image                                                             |
 | ---------------------- | ----------------------------------------------------------------- |
-| splash                 | `![Splash Screen](docs/docs/screenshots/splash.png)`              |
+| splash                 | `![Splash Screen](docs/screenshots/splash.png)`                   |
 | Onboarding             | `![Onboarding Screen](docs/screenshots/onboarding.png)`           |
 | Onboarding             | `![Onboarding Screen](docs/screenshots/onboarding_2.png)`         |
 | Login                  | `![Login Screen](docs/screenshots/login.png)`                     |
@@ -27,6 +27,7 @@ Customers can browse vehicles, filter and search by brand, type, or model, view 
 | Booking / PickDate     | `![Booking Screen](docs/screenshots/booking_2.png)`               |
 | Booking / PickTime     | `![Booking Screen](docs/screenshots/booking_3.png)`               |
 | Booking / Rental       | `![Booking Screen](docs/screenshots/booking_4.png)`               |
+| Booking / Detail       | `![Booking Detail Screen](docs/screenshots/booking_detail.png)`   |
 | Additional Service     | `![Service Screen](docs/screenshots/service.png)`                 |
 | Payment (KHQR)         | `![Payment Screen](docs/screenshots/payment.png)`                 |
 | Generate QR (KHQR)     | `![QRCode Screen](docs/screenshots/qrcode.png)`                   |
