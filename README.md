@@ -12,35 +12,6 @@ Customers can browse vehicles, filter and search by brand, type, or model, view 
 
 ## 📸 docs/Screenshots
 
-<<<<<<< HEAD
-| Screen                 | Image                                                             |
-| ---------------------- | ----------------------------------------------------------------- |
-| splash                 | `![Splash Screen](docs/screenshots/splash.png)`                   |
-| Onboarding             | `![Onboarding Screen](docs/screenshots/onboarding.png)`           |
-| Onboarding             | `![Onboarding Screen](docs/screenshots/onboarding_2.png)`         |
-| Login                  | `![Login Screen](docs/screenshots/login.png)`                     |
-| Register               | `![Register Screen](docs/screenshots/register.png)`               |
-| Home                   | `![Home Screen](docs/screenshots/home.png)`                       |
-| Explore / Vehicle List | `![Explore Screen](docs/screenshots/explore.png)`                 |
-| Vehicle Detail         | `![Vehicle Detail Screen](docs/screenshots/vehicle_detail.png)`   |
-| Vehicle Detail         | `![Vehicle Detail Screen](docs/screenshots/vehicle_detail_2.png)` |
-| Booking / Rental       | `![Booking Screen](docs/screenshots/booking.png)`                 |
-| Booking / PickDate     | `![Booking Screen](docs/screenshots/booking_2.png)`               |
-| Booking / PickTime     | `![Booking Screen](docs/screenshots/booking_3.png)`               |
-| Booking / Rental       | `![Booking Screen](docs/screenshots/booking_4.png)`               |
-| Booking / Detail       | `![Booking Detail Screen](docs/screenshots/booking_detail.png)`   |
-| Additional Service     | `![Service Screen](docs/screenshots/service.png)`                 |
-| Payment (KHQR)         | `![Payment Screen](docs/screenshots/payment.png)`                 |
-| Generate QR (KHQR)     | `![QRCode Screen](docs/screenshots/qrcode.png)`                   |
-| Booking Complete       | `![Complete Screen](docs/screenshots/complete.png)`               |
-| Booking Complete       | `![Complete Screen](docs/screenshots/complete_2.png)`             |
-| Booking History        | `![Booking History Screen](docs/screenshots/booking_history.png)` |
-| Favorites              | `![Favorite Screen](docs/screenshots/favorite.png)`               |
-| Profile                | `![Profile Screen](docs/screenshots/profile.png)`                 |
-| Shimmer                | `![Shimmer Screen](docs/screenshots/shimmer.png)`                 |
-=======
-<h2>📱 App Screenshots</h2>
-
 <table>
   <tr>
     <td align="center">
@@ -90,11 +61,11 @@ Customers can browse vehicles, filter and search by brand, type, or model, view 
       <img src="docs/screenshots/booking.png" width="180">
     </td>
     <td align="center">
-      <strong>Pick Date</strong><br>
+      <strong>Booking / Pick Date</strong><br>
       <img src="docs/screenshots/booking_2.png" width="180">
     </td>
     <td align="center">
-      <strong>Pick Time</strong><br>
+      <strong>Booking / Pick Time</strong><br>
       <img src="docs/screenshots/booking_3.png" width="180">
     </td>
   </tr>
@@ -105,6 +76,10 @@ Customers can browse vehicles, filter and search by brand, type, or model, view 
       <img src="docs/screenshots/booking_4.png" width="180">
     </td>
     <td align="center">
+      <strong>Booking / Detail</strong><br>
+      <img src="docs/screenshots/booking_detail.png" width="180">
+    </td>
+    <td align="center">
       <strong>Additional Service</strong><br>
       <img src="docs/screenshots/service.png" width="180">
     </td>
@@ -112,13 +87,13 @@ Customers can browse vehicles, filter and search by brand, type, or model, view 
       <strong>Payment (KHQR)</strong><br>
       <img src="docs/screenshots/payment.png" width="180">
     </td>
-    <td align="center">
-      <strong>Generate QR</strong><br>
-      <img src="docs/screenshots/qrcode.png" width="180">
-    </td>
   </tr>
 
   <tr>
+    <td align="center">
+      <strong>Generate QR (KHQR)</strong><br>
+      <img src="docs/screenshots/qrcode.png" width="180">
+    </td>
     <td align="center">
       <strong>Booking Complete</strong><br>
       <img src="docs/screenshots/complete.png" width="180">
@@ -131,13 +106,13 @@ Customers can browse vehicles, filter and search by brand, type, or model, view 
       <strong>Booking History</strong><br>
       <img src="docs/screenshots/booking_history.png" width="180">
     </td>
+  </tr>
+
+  <tr>
     <td align="center">
       <strong>Favorites</strong><br>
       <img src="docs/screenshots/favorite.png" width="180">
     </td>
-  </tr>
-
-  <tr>
     <td align="center">
       <strong>Profile</strong><br>
       <img src="docs/screenshots/profile.png" width="180">
@@ -148,7 +123,6 @@ Customers can browse vehicles, filter and search by brand, type, or model, view 
     </td>
   </tr>
 </table>
->>>>>>> 37c4a6264b834f66b7d714e6458c544d8b9c06be
 
 ---
 
