@@ -6,7 +6,7 @@ Customers can browse vehicles, filter and search by brand, type, or model, view 
 
 - **Frontend repository:** `flutter_frontend` — Flutter / Dart
 - **Backend repository:** `spring_backend` — Java / Spring Boot
-- **Repository:** `https://github.com/ETEC-Spring-Final/flutter_frontend`
+- **Repository:** `https://github.com/ETEC-Spring-Final`
 
 ---
 
