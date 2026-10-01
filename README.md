@@ -12,6 +12,7 @@ Customers can browse vehicles, filter and search by brand, type, or model, view 
 
 ## 📸 docs/Screenshots
 
+<<<<<<< HEAD
 | Screen                 | Image                                                             |
 | ---------------------- | ----------------------------------------------------------------- |
 | splash                 | `![Splash Screen](docs/screenshots/splash.png)`                   |
@@ -37,6 +38,117 @@ Customers can browse vehicles, filter and search by brand, type, or model, view 
 | Favorites              | `![Favorite Screen](docs/screenshots/favorite.png)`               |
 | Profile                | `![Profile Screen](docs/screenshots/profile.png)`                 |
 | Shimmer                | `![Shimmer Screen](docs/screenshots/shimmer.png)`                 |
+=======
+<h2>📱 App Screenshots</h2>
+
+<table>
+  <tr>
+    <td align="center">
+      <strong>Splash</strong><br>
+      <img src="docs/screenshots/splash.png" width="180">
+    </td>
+    <td align="center">
+      <strong>Onboarding</strong><br>
+      <img src="docs/screenshots/onboarding.png" width="180">
+    </td>
+    <td align="center">
+      <strong>Onboarding 2</strong><br>
+      <img src="docs/screenshots/onboarding_2.png" width="180">
+    </td>
+    <td align="center">
+      <strong>Login</strong><br>
+      <img src="docs/screenshots/login.png" width="180">
+    </td>
+  </tr>
+
+  <tr>
+    <td align="center">
+      <strong>Register</strong><br>
+      <img src="docs/screenshots/register.png" width="180">
+    </td>
+    <td align="center">
+      <strong>Home</strong><br>
+      <img src="docs/screenshots/home.png" width="180">
+    </td>
+    <td align="center">
+      <strong>Explore / Vehicle List</strong><br>
+      <img src="docs/screenshots/explore.png" width="180">
+    </td>
+    <td align="center">
+      <strong>Vehicle Detail</strong><br>
+      <img src="docs/screenshots/vehicle_detail.png" width="180">
+    </td>
+  </tr>
+
+  <tr>
+    <td align="center">
+      <strong>Vehicle Detail 2</strong><br>
+      <img src="docs/screenshots/vehicle_detail_2.png" width="180">
+    </td>
+    <td align="center">
+      <strong>Booking / Rental</strong><br>
+      <img src="docs/screenshots/booking.png" width="180">
+    </td>
+    <td align="center">
+      <strong>Pick Date</strong><br>
+      <img src="docs/screenshots/booking_2.png" width="180">
+    </td>
+    <td align="center">
+      <strong>Pick Time</strong><br>
+      <img src="docs/screenshots/booking_3.png" width="180">
+    </td>
+  </tr>
+
+  <tr>
+    <td align="center">
+      <strong>Booking / Rental 4</strong><br>
+      <img src="docs/screenshots/booking_4.png" width="180">
+    </td>
+    <td align="center">
+      <strong>Additional Service</strong><br>
+      <img src="docs/screenshots/service.png" width="180">
+    </td>
+    <td align="center">
+      <strong>Payment (KHQR)</strong><br>
+      <img src="docs/screenshots/payment.png" width="180">
+    </td>
+    <td align="center">
+      <strong>Generate QR</strong><br>
+      <img src="docs/screenshots/qrcode.png" width="180">
+    </td>
+  </tr>
+
+  <tr>
+    <td align="center">
+      <strong>Booking Complete</strong><br>
+      <img src="docs/screenshots/complete.png" width="180">
+    </td>
+    <td align="center">
+      <strong>Booking Complete 2</strong><br>
+      <img src="docs/screenshots/complete_2.png" width="180">
+    </td>
+    <td align="center">
+      <strong>Booking History</strong><br>
+      <img src="docs/screenshots/booking_history.png" width="180">
+    </td>
+    <td align="center">
+      <strong>Favorites</strong><br>
+      <img src="docs/screenshots/favorite.png" width="180">
+    </td>
+  </tr>
+
+  <tr>
+    <td align="center">
+      <strong>Profile</strong><br>
+      <img src="docs/screenshots/profile.png" width="180">
+    </td>
+    <td align="center">
+      <strong>Shimmer</strong><br>
+      <img src="docs/screenshots/shimmer.png" width="180">
+    </td>
+  </tr>
+</table>
+>>>>>>> 37c4a6264b834f66b7d714e6458c544d8b9c06be
 
 ---
 
