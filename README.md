@@ -14,7 +14,7 @@ Customers can browse vehicles, filter and search by brand, type, or model, view 
 
 | Screen                 | Image                                                             |
 | ---------------------- | ----------------------------------------------------------------- |
-| splash                 | `![Splash Screen](docs/docs/screenshots/splash.png)`              |
+| splash                 | `![Splash Screen](docs/screenshots/splash.png)`                   |
 | Onboarding             | `![Onboarding Screen](docs/screenshots/onboarding.png)`           |
 | Onboarding             | `![Onboarding Screen](docs/screenshots/onboarding_2.png)`         |
 | Login                  | `![Login Screen](docs/screenshots/login.png)`                     |
