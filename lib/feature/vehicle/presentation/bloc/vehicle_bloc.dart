@@ -16,12 +16,22 @@ class VehicleBloc extends Bloc<VehicleEvent, VehicleState> {
   List<Vehicle> _vehicles = const [];
   List<Brand> _brands = const [];
 
-  // Tracks whether the vehicle list has finished loading. Brand fetches
-  // may complete independently, but the home/explore empty states must
-  // not be shown until the vehicle fetch has actually finished (otherwise
-  // a fast brand response emits VehicleLoaded with an empty vehicle list
-  // while /vehicles is still in flight).
+  // Tracks whether the first vehicle request has completed.
   bool _vehiclesLoaded = false;
+
+  // Pagination
+  static const int _pageSize = 10;
+  int _currentPage = 0;
+  bool _hasReachedMax = false;
+
+  // Current Explore filters
+  int? _brandId;
+  String? _type;
+  String? _transmission;
+  String? _fuelType;
+  double? _minPrice;
+  double? _maxPrice;
+  int? _seats;
 
   VehicleBloc(this.repository) : super(VehicleInitial()) {
     on<GetVehicles>(_onGetVehicles);
@@ -31,20 +41,132 @@ class VehicleBloc extends Bloc<VehicleEvent, VehicleState> {
     on<DeleteVehicleEvent>(_onDeleteVehicle);
   }
 
+  // ============================================================
+  // GET VEHICLES
+  // ============================================================
+
   Future<void> _onGetVehicles(
     GetVehicles event,
     Emitter<VehicleState> emit,
   ) async {
-    emit(VehicleLoading());
+    // ------------------------------------------------------------
+    // REFRESH / FIRST LOAD
+    // ------------------------------------------------------------
 
-    final result = await repository.getVehicles();
+    if (event.refresh || state is VehicleInitial) {
+      _currentPage = 0;
+      _hasReachedMax = false;
 
-    result.fold((failure) => emit(VehicleError(failure.message)), (vehicles) {
-      _vehicles = vehicles;
-      _vehiclesLoaded = true;
-      emit(VehicleLoaded(_vehicles));
-    });
+      // Save the filters from the event.
+      _brandId = event.brandId;
+      _type = event.type;
+      _transmission = event.transmission;
+      _fuelType = event.fuelType;
+      _minPrice = event.minPrice;
+      _maxPrice = event.maxPrice;
+      _seats = event.seats;
+
+      emit(VehicleLoading());
+
+      final result = await repository.getVehicles(
+        page: _currentPage,
+        size: _pageSize,
+        brandId: _brandId,
+        type: _type,
+        transmission: _transmission,
+        fuelType: _fuelType,
+        minPrice: _minPrice,
+        maxPrice: _maxPrice,
+        seats: _seats,
+      );
+
+      result.fold(
+        (failure) {
+          _vehiclesLoaded = true;
+          emit(VehicleError(failure.message));
+        },
+        (response) {
+          _vehicles = response.content;
+          _currentPage = response.page;
+          _hasReachedMax = response.last;
+          _vehiclesLoaded = true;
+
+          emit(
+            VehicleLoaded(
+              _vehicles,
+              currentPage: _currentPage,
+              totalPages: response.totalPages,
+              hasReachedMax: _hasReachedMax,
+              isLoadingMore: false,
+            ),
+          );
+        },
+      );
+
+      return;
+    }
+
+    // ------------------------------------------------------------
+    // LOAD NEXT PAGE
+    // ------------------------------------------------------------
+
+    if (state is VehicleLoaded) {
+      final currentState = state as VehicleLoaded;
+
+      // Don't request another page if one is already loading.
+      if (currentState.isLoadingMore) {
+        return;
+      }
+
+      // Don't request another page when we reached the last page.
+      if (_hasReachedMax) {
+        return;
+      }
+
+      emit(currentState.copyWith(isLoadingMore: true));
+
+      final nextPage = _currentPage + 1;
+
+      final result = await repository.getVehicles(
+        page: nextPage,
+        size: _pageSize,
+        brandId: _brandId,
+        type: _type,
+        transmission: _transmission,
+        fuelType: _fuelType,
+        minPrice: _minPrice,
+        maxPrice: _maxPrice,
+        seats: _seats,
+      );
+
+      result.fold(
+        (failure) {
+          emit(currentState.copyWith(isLoadingMore: false));
+        },
+        (response) {
+          // Add the next page to the existing vehicles.
+          _vehicles = [..._vehicles, ...response.content];
+
+          _currentPage = response.page;
+          _hasReachedMax = response.last;
+
+          emit(
+            VehicleLoaded(
+              _vehicles,
+              currentPage: _currentPage,
+              totalPages: response.totalPages,
+              hasReachedMax: _hasReachedMax,
+              isLoadingMore: false,
+            ),
+          );
+        },
+      );
+    }
   }
+
+  // ============================================================
+  // GET VEHICLE BY ID
+  // ============================================================
 
   Future<void> _onGetVehicleById(
     GetVehicleById event,
@@ -56,9 +178,22 @@ class VehicleBloc extends Bloc<VehicleEvent, VehicleState> {
 
     result.fold((failure) => emit(VehicleError(failure.message)), (vehicle) {
       _vehicles = [vehicle];
-      emit(VehicleLoaded(_vehicles));
+
+      emit(
+        VehicleLoaded(
+          _vehicles,
+          currentPage: 0,
+          totalPages: 1,
+          hasReachedMax: true,
+          isLoadingMore: false,
+        ),
+      );
     });
   }
+
+  // ============================================================
+  // CREATE VEHICLE
+  // ============================================================
 
   Future<void> _onCreateVehicle(
     CreateVehicleEvent event,
@@ -89,6 +224,7 @@ class VehicleBloc extends Bloc<VehicleEvent, VehicleState> {
 
       final links = upload.getRight().toNullable()!;
       final primaryIndex = edits.primaryNewImageIndex;
+
       final primaryLink = primaryIndex != null && links.length > primaryIndex
           ? links[primaryIndex]
           : (links.isNotEmpty ? links.first : null);
@@ -112,6 +248,10 @@ class VehicleBloc extends Bloc<VehicleEvent, VehicleState> {
     emit(const VehicleSuccess('Vehicle created successfully.'));
   }
 
+  // ============================================================
+  // UPDATE VEHICLE
+  // ============================================================
+
   Future<void> _onUpdateVehicle(
     UpdateVehicleEvent event,
     Emitter<VehicleState> emit,
@@ -129,6 +269,10 @@ class VehicleBloc extends Bloc<VehicleEvent, VehicleState> {
     final edits = event.imageEdits;
 
     if (edits != null && !edits.isEmpty) {
+      // ----------------------------------------------------------
+      // DELETE OLD IMAGES
+      // ----------------------------------------------------------
+
       for (final id in edits.removeImageIds) {
         final removed = await repository.deleteVehicleImage(id);
 
@@ -138,7 +282,12 @@ class VehicleBloc extends Bloc<VehicleEvent, VehicleState> {
         }
       }
 
+      // ----------------------------------------------------------
+      // UPLOAD NEW IMAGES
+      // ----------------------------------------------------------
+
       List<VehicleImage> links = const [];
+
       if (edits.newImages.isNotEmpty) {
         final upload = await repository.uploadVehicleImages(
           updated.id,
@@ -149,11 +298,17 @@ class VehicleBloc extends Bloc<VehicleEvent, VehicleState> {
           emit(VehicleError(upload.getLeft().toNullable()!.message));
           return;
         }
+
         links = upload.getRight().toNullable()!;
       }
 
+      // ----------------------------------------------------------
+      // SET NEW IMAGE AS PRIMARY
+      // ----------------------------------------------------------
+
       if (edits.primaryNewImageIndex != null && links.isNotEmpty) {
         final index = edits.primaryNewImageIndex!;
+
         final link = links.length > index ? links[index] : links.first;
 
         final primary = await repository.updateVehicleImage(
@@ -168,8 +323,13 @@ class VehicleBloc extends Bloc<VehicleEvent, VehicleState> {
           emit(VehicleError(primary.getLeft().toNullable()!.message));
           return;
         }
-      } else if (edits.primaryImageId != null) {
+      }
+      // ----------------------------------------------------------
+      // SET EXISTING IMAGE AS PRIMARY
+      // ----------------------------------------------------------
+      else if (edits.primaryImageId != null) {
         VehicleImage? target;
+
         for (final image in event.vehicle.images) {
           if (image.id == edits.primaryImageId) {
             target = image;
@@ -196,6 +356,10 @@ class VehicleBloc extends Bloc<VehicleEvent, VehicleState> {
 
     emit(const VehicleSuccess('Vehicle updated successfully.'));
   }
+
+  // ============================================================
+  // DELETE VEHICLE
+  // ============================================================
 
   Future<void> _onDeleteVehicle(
     DeleteVehicleEvent event,

@@ -1,15 +1,55 @@
 part of 'vehicle_bloc.dart';
 
-abstract class VehicleEvent extends Equatable {
+sealed class VehicleEvent extends Equatable {
   const VehicleEvent();
 
   @override
   List<Object?> get props => [];
 }
 
+// ============================================================
+// GET VEHICLES
+// ============================================================
+
 class GetVehicles extends VehicleEvent {
-  const GetVehicles();
+  final bool refresh;
+
+  // Explore filters
+  final int? brandId;
+  final String? type;
+  final String? transmission;
+  final String? fuelType;
+  final double? minPrice;
+  final double? maxPrice;
+  final int? seats;
+
+  const GetVehicles({
+    this.refresh = false,
+    this.brandId,
+    this.type,
+    this.transmission,
+    this.fuelType,
+    this.minPrice,
+    this.maxPrice,
+    this.seats,
+  });
+
+  @override
+  List<Object?> get props => [
+    refresh,
+    brandId,
+    type,
+    transmission,
+    fuelType,
+    minPrice,
+    maxPrice,
+    seats,
+  ];
 }
+
+// ============================================================
+// GET VEHICLE BY ID
+// ============================================================
 
 class GetVehicleById extends VehicleEvent {
   final int id;
@@ -20,69 +60,37 @@ class GetVehicleById extends VehicleEvent {
   List<Object?> get props => [id];
 }
 
-/// Describes the image changes the user made in the vehicle form.
-class VehicleImageEdits {
-  /// Files to upload and attach to the vehicle (additions + replacements).
-  final List<File> newImages;
-
-  /// Existing vehicle-image ids to delete (including replaced ones).
-  final Set<int> removeImageIds;
-
-  /// Existing vehicle-image id that must become the primary/cover photo.
-  final int? primaryImageId;
-
-  /// Index into [newImages] whose uploaded link must become primary.
-  final int? primaryNewImageIndex;
-
-  const VehicleImageEdits({
-    this.newImages = const [],
-    this.removeImageIds = const {},
-    this.primaryImageId,
-    this.primaryNewImageIndex,
-  });
-
-  bool get isEmpty =>
-      newImages.isEmpty &&
-      removeImageIds.isEmpty &&
-      primaryImageId == null &&
-      primaryNewImageIndex == null;
-
-  @override
-  bool operator ==(Object other) =>
-      other is VehicleImageEdits &&
-      identical(newImages, other.newImages) &&
-      identical(removeImageIds, other.removeImageIds) &&
-      primaryImageId == other.primaryImageId &&
-      primaryNewImageIndex == other.primaryNewImageIndex;
-
-  @override
-  int get hashCode => Object.hash(
-    newImages,
-    removeImageIds,
-    primaryImageId,
-    primaryNewImageIndex,
-  );
-}
+// ============================================================
+// CREATE VEHICLE
+// ============================================================
 
 class CreateVehicleEvent extends VehicleEvent {
   final Vehicle vehicle;
   final VehicleImageEdits? imageEdits;
 
-  const CreateVehicleEvent(this.vehicle, [this.imageEdits]);
+  const CreateVehicleEvent({required this.vehicle, this.imageEdits});
 
   @override
   List<Object?> get props => [vehicle, imageEdits];
 }
+
+// ============================================================
+// UPDATE VEHICLE
+// ============================================================
 
 class UpdateVehicleEvent extends VehicleEvent {
   final Vehicle vehicle;
   final VehicleImageEdits? imageEdits;
 
-  const UpdateVehicleEvent(this.vehicle, [this.imageEdits]);
+  const UpdateVehicleEvent({required this.vehicle, this.imageEdits});
 
   @override
   List<Object?> get props => [vehicle, imageEdits];
 }
+
+// ============================================================
+// DELETE VEHICLE
+// ============================================================
 
 class DeleteVehicleEvent extends VehicleEvent {
   final int id;
@@ -91,4 +99,40 @@ class DeleteVehicleEvent extends VehicleEvent {
 
   @override
   List<Object?> get props => [id];
+}
+
+// ============================================================
+// VEHICLE IMAGE EDITS
+// ============================================================
+
+class VehicleImageEdits extends Equatable {
+  final List<File> newImages;
+  final List<int> removeImageIds;
+
+  // Index of a newly uploaded image that should become primary.
+  final int? primaryNewImageIndex;
+
+  // ID of an existing image that should become primary.
+  final int? primaryImageId;
+
+  const VehicleImageEdits({
+    this.newImages = const [],
+    this.removeImageIds = const [],
+    this.primaryNewImageIndex,
+    this.primaryImageId,
+  });
+
+  bool get isEmpty =>
+      newImages.isEmpty &&
+      removeImageIds.isEmpty &&
+      primaryNewImageIndex == null &&
+      primaryImageId == null;
+
+  @override
+  List<Object?> get props => [
+    newImages,
+    removeImageIds,
+    primaryNewImageIndex,
+    primaryImageId,
+  ];
 }

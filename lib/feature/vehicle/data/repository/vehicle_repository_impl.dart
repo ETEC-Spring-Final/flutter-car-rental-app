@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:fpdart/fpdart.dart';
 import 'package:vehicle_rental_system/core/errors/failure.dart';
+import 'package:vehicle_rental_system/feature/brand/data/model/page_response.dart';
 import 'package:vehicle_rental_system/feature/vehicle/data/datasource/vehicle_remote_data_source.dart';
 import 'package:vehicle_rental_system/feature/vehicle/data/mapper/vehicle_image_mapper.dart';
 import 'package:vehicle_rental_system/feature/vehicle/data/mapper/vehicle_mapper.dart';
@@ -15,14 +16,56 @@ class VehicleRepositoryImpl implements VehicleRepository {
 
   VehicleRepositoryImpl(this.remote);
 
+  // @override
+  // Future<Either<Failure, List<Vehicle>>> getVehicles() async {
+  //   try {
+  //     final models = await remote.getVehicles();
+
+  //     final vehicles = models.map(VehicleMapper.toEntity).toList();
+
+  //     return Right(vehicles);
+  //   } catch (e) {
+  //     return Left(ServiceFailure(e.toString()));
+  //   }
+  // }
   @override
-  Future<Either<Failure, List<Vehicle>>> getVehicles() async {
+  Future<Either<Failure, PageResponse<Vehicle>>> getVehicles({
+    int page = 0,
+    int size = 10,
+    int? brandId,
+    String? type,
+    String? transmission,
+    String? fuelType,
+    double? minPrice,
+    double? maxPrice,
+    int? seats,
+  }) async {
     try {
-      final models = await remote.getVehicles();
+      final response = await remote.getVehicles(
+        page: page,
+        size: size,
+        brandId: brandId,
+        type: type,
+        transmission: transmission,
+        fuelType: fuelType,
+        minPrice: minPrice,
+        maxPrice: maxPrice,
+        seats: seats,
+      );
 
-      final vehicles = models.map(VehicleMapper.toEntity).toList();
+      final vehicles = response.content.map(VehicleMapper.toEntity).toList();
 
-      return Right(vehicles);
+      return Right(
+        PageResponse<Vehicle>(
+          content: vehicles,
+          page: response.page,
+          size: response.size,
+          totalElements: response.totalElements,
+          totalPages: response.totalPages,
+          first: response.first,
+          last: response.last,
+        ),
+      );
     } catch (e) {
       return Left(ServiceFailure(e.toString()));
     }

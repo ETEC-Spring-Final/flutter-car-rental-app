@@ -20,36 +20,100 @@ class VehicleCrudScreen extends StatefulWidget {
 }
 
 class _VehicleCrudScreenState extends State<VehicleCrudScreen> {
+  late final ScrollController _scrollController;
+
   @override
   void initState() {
     super.initState();
 
-    context.read<VehicleBloc>().add(const GetVehicles());
-    context.read<BrandBloc>().add(const GetBrands());
+    _scrollController = ScrollController();
+    _scrollController.addListener(_onScroll);
+
+    // Load first page.
+    context.read<VehicleBloc>().add(const GetVehicles(refresh: true));
+
+    // Load brands for the vehicle form.
+    context.read<BrandBloc>().add(const GetBrands(refresh: true));
   }
 
-  Future<void> _refresh() async {
-    context.read<VehicleBloc>().add(const GetVehicles());
-    context.read<BrandBloc>().add(const GetBrands());
+  @override
+  void dispose() {
+    _scrollController.removeListener(_onScroll);
+    _scrollController.dispose();
+
+    super.dispose();
   }
+
+  // =====================================================================
+  // PAGINATION
+  // =====================================================================
+
+  void _onScroll() {
+    if (!_scrollController.hasClients) {
+      return;
+    }
+
+    final position = _scrollController.position;
+
+    // Start loading the next page when the user is
+    // approximately 300 pixels from the bottom.
+    if (position.pixels >= position.maxScrollExtent - 300) {
+      final state = context.read<VehicleBloc>().state;
+
+      if (state is VehicleLoaded) {
+        if (!state.hasReachedMax && !state.isLoadingMore) {
+          context.read<VehicleBloc>().add(const GetVehicles());
+        }
+      }
+    }
+  }
+
+  // =====================================================================
+  // REFRESH
+  // =====================================================================
+
+  Future<void> _refresh() async {
+    context.read<VehicleBloc>().add(const GetVehicles(refresh: true));
+
+    context.read<BrandBloc>().add(const GetBrands(refresh: true));
+  }
+
+  // =====================================================================
+  // OPEN FORM
+  // =====================================================================
 
   Future<void> _openForm([Vehicle? vehicle]) async {
     final result = await Navigator.of(context).push<_VehicleFormResult>(
       MaterialPageRoute(builder: (_) => _VehicleFormScreen(vehicle: vehicle)),
     );
 
-    if (result == null || !mounted) return;
+    if (result == null || !mounted) {
+      return;
+    }
 
+    // CREATE
     if (vehicle == null) {
       context.read<VehicleBloc>().add(
-        CreateVehicleEvent(result.vehicle, result.imageEdits),
+        CreateVehicleEvent(
+          vehicle: result.vehicle,
+          imageEdits: result.imageEdits,
+        ),
       );
-    } else {
+    }
+    // UPDATE
+    else {
       context.read<VehicleBloc>().add(
-        UpdateVehicleEvent(result.vehicle, result.imageEdits),
+        UpdateVehicleEvent(
+          vehicle: result.vehicle,
+          imageEdits: result.imageEdits,
+        ),
       );
     }
   }
+
+  // =====================================================================
+  // DELETE CONFIRMATION
+  // =====================================================================
 
   Future<void> _confirmDelete(Vehicle vehicle) async {
     final confirmed = await showDialog<bool>(
@@ -63,11 +127,15 @@ class _VehicleCrudScreenState extends State<VehicleCrudScreen> {
           ),
           actions: [
             TextButton(
-              onPressed: () => Navigator.pop(dialogContext, false),
+              onPressed: () {
+                Navigator.pop(dialogContext, false);
+              },
               child: const Text('Cancel'),
             ),
             FilledButton(
-              onPressed: () => Navigator.pop(dialogContext, true),
+              onPressed: () {
+                Navigator.pop(dialogContext, true);
+              },
               style: FilledButton.styleFrom(
                 backgroundColor: Theme.of(dialogContext).colorScheme.error,
               ),
@@ -78,10 +146,16 @@ class _VehicleCrudScreenState extends State<VehicleCrudScreen> {
       },
     );
 
-    if (confirmed != true || !mounted) return;
+    if (confirmed != true || !mounted) {
+      return;
+    }
 
     context.read<VehicleBloc>().add(DeleteVehicleEvent(vehicle.id));
   }
+
+  // =====================================================================
+  // BUILD
+  // =====================================================================
 
   @override
   Widget build(BuildContext context) {
@@ -89,13 +163,22 @@ class _VehicleCrudScreenState extends State<VehicleCrudScreen> {
 
     return BlocListener<VehicleBloc, VehicleState>(
       listener: (context, state) {
+        // ---------------------------------------------------------------
+        // SUCCESS
+        // ---------------------------------------------------------------
+
         if (state is VehicleSuccess) {
           ScaffoldMessenger.of(context)
             ..clearSnackBars()
             ..showSnackBar(SnackBar(content: Text(state.message)));
 
-          context.read<VehicleBloc>().add(const GetVehicles());
+          // Refresh from page 0 after CRUD operation.
+          context.read<VehicleBloc>().add(const GetVehicles(refresh: true));
         }
+
+        // ---------------------------------------------------------------
+        // ERROR
+        // ---------------------------------------------------------------
 
         if (state is VehicleError) {
           ScaffoldMessenger.of(context)
@@ -105,20 +188,34 @@ class _VehicleCrudScreenState extends State<VehicleCrudScreen> {
       },
       child: Scaffold(
         appBar: AppBar(title: const Text('Vehicle CRUD (Test)')),
+
         floatingActionButton: FloatingActionButton.extended(
           onPressed: () => _openForm(),
           icon: const Icon(Icons.add_rounded),
           label: const Text('Add Vehicle'),
         ),
+
         body: BlocBuilder<VehicleBloc, VehicleState>(
           builder: (context, state) {
+            // ===========================================================
+            // INITIAL / FIRST PAGE LOADING
+            // ===========================================================
+
             if (state is VehicleLoading) {
               return const Center(child: CircularProgressIndicator());
             }
 
+            // ===========================================================
+            // ERROR
+            // ===========================================================
+
             if (state is VehicleError) {
               return _ErrorState(message: state.message, onRetry: _refresh);
             }
+
+            // ===========================================================
+            // INITIAL STATE
+            // ===========================================================
 
             if (state is! VehicleLoaded) {
               return _ErrorState(
@@ -127,28 +224,38 @@ class _VehicleCrudScreenState extends State<VehicleCrudScreen> {
               );
             }
 
+            // ===========================================================
+            // EMPTY
+            // ===========================================================
+
             if (state.vehicles.isEmpty) {
-              return Center(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
+              return RefreshIndicator(
+                onRefresh: _refresh,
+                child: ListView(
+                  physics: const AlwaysScrollableScrollPhysics(),
                   children: [
+                    SizedBox(height: MediaQuery.of(context).size.height * 0.35),
                     Icon(
                       Icons.directions_car_outlined,
                       size: 64.r,
                       color: theme.colorScheme.outline.withValues(alpha: 0.5),
                     ),
                     SizedBox(height: 16.h),
-                    Text(
-                      'No vehicles found',
-                      style: theme.textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.w600,
+                    Center(
+                      child: Text(
+                        'No vehicles found',
+                        style: theme.textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
                     ),
                     SizedBox(height: 4.h),
-                    Text(
-                      'Tap "Add Vehicle" to create one.',
-                      style: theme.textTheme.bodyMedium?.copyWith(
-                        color: theme.colorScheme.onSurfaceVariant,
+                    Center(
+                      child: Text(
+                        'Tap "Add Vehicle" to create one.',
+                        style: theme.textTheme.bodyMedium?.copyWith(
+                          color: theme.colorScheme.onSurfaceVariant,
+                        ),
                       ),
                     ),
                   ],
@@ -156,14 +263,41 @@ class _VehicleCrudScreenState extends State<VehicleCrudScreen> {
               );
             }
 
+            // ===========================================================
+            // VEHICLE LIST
+            // ===========================================================
+
             return RefreshIndicator(
               onRefresh: _refresh,
               child: ListView.separated(
+                controller: _scrollController,
                 physics: const AlwaysScrollableScrollPhysics(),
                 padding: EdgeInsets.all(AppDimensions.chipHorizontalPadding),
-                itemCount: state.vehicles.length,
-                separatorBuilder: (_, _) => SizedBox(height: 12.h),
+
+                // +1 for the bottom loading indicator.
+                itemCount:
+                    state.vehicles.length + (state.isLoadingMore ? 1 : 0),
+
+                separatorBuilder: (_, _) {
+                  return SizedBox(height: 12.h);
+                },
+
                 itemBuilder: (context, index) {
+                  // -----------------------------------------------------
+                  // LOADING MORE INDICATOR
+                  // -----------------------------------------------------
+
+                  if (index >= state.vehicles.length) {
+                    return Padding(
+                      padding: EdgeInsets.symmetric(vertical: 16.h),
+                      child: const Center(child: CircularProgressIndicator()),
+                    );
+                  }
+
+                  // -----------------------------------------------------
+                  // VEHICLE
+                  // -----------------------------------------------------
+
                   final vehicle = state.vehicles[index];
 
                   return _VehicleCard(
@@ -260,7 +394,9 @@ class _VehicleCard extends StatelessWidget {
         child: Row(
           children: [
             _Thumbnail(vehicle: vehicle),
+
             SizedBox(width: 12.w),
+
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -273,7 +409,9 @@ class _VehicleCard extends StatelessWidget {
                       fontWeight: FontWeight.w700,
                     ),
                   ),
+
                   SizedBox(height: 4.h),
+
                   Text(
                     '${vehicle.yearOfManufacture} • '
                     '${vehicle.type} • '
@@ -284,7 +422,9 @@ class _VehicleCard extends StatelessWidget {
                       color: colorScheme.onSurfaceVariant,
                     ),
                   ),
+
                   SizedBox(height: 8.h),
+
                   Wrap(
                     spacing: 8.w,
                     runSpacing: 4.h,
@@ -297,6 +437,7 @@ class _VehicleCard extends StatelessWidget {
                           fontWeight: FontWeight.w700,
                         ),
                       ),
+
                       Container(
                         padding: EdgeInsets.symmetric(
                           horizontal: 8.w,
@@ -322,6 +463,7 @@ class _VehicleCard extends StatelessWidget {
                 ],
               ),
             ),
+
             Column(
               children: [
                 IconButton(
@@ -329,6 +471,7 @@ class _VehicleCard extends StatelessWidget {
                   tooltip: 'Edit',
                   icon: const Icon(Icons.edit_outlined),
                 ),
+
                 IconButton(
                   onPressed: onDelete,
                   tooltip: 'Delete',
@@ -351,11 +494,14 @@ class _VehicleCard extends StatelessWidget {
     switch (status.toLowerCase()) {
       case 'available':
         return Colors.green;
+
       case 'rented':
       case 'booked':
         return colorScheme.primary;
+
       case 'maintenance':
         return Colors.orange;
+
       default:
         return colorScheme.onSurfaceVariant;
     }
@@ -394,11 +540,13 @@ class _Thumbnail extends StatelessWidget {
           : Image.network(
               url,
               fit: BoxFit.cover,
-              errorBuilder: (_, _, _) => Icon(
-                Icons.broken_image_outlined,
-                size: 28.r,
-                color: colorScheme.onSurfaceVariant,
-              ),
+              errorBuilder: (_, _, _) {
+                return Icon(
+                  Icons.broken_image_outlined,
+                  size: 28.r,
+                  color: colorScheme.onSurfaceVariant,
+                );
+              },
             ),
     );
   }
@@ -547,8 +695,6 @@ class _VehicleFormScreenState extends State<_VehicleFormScreen> {
 
     _status = _statuses.contains(v?.status) ? v!.status : _statuses.first;
 
-    // Prefer vehicle.brandId.
-    // If unavailable, try finding the ID by brand name.
     _brandId = _resolveInitialBrandId(v);
 
     if (v != null) {
@@ -560,12 +706,11 @@ class _VehicleFormScreenState extends State<_VehicleFormScreen> {
       }
     }
 
-    // IMPORTANT:
-    // BrandsLoaded belongs to BrandBloc.
+    // Make sure brands are loaded.
     final state = context.read<BrandBloc>().state;
 
     if (state is! BrandsLoaded) {
-      context.read<BrandBloc>().add(const GetBrands());
+      context.read<BrandBloc>().add(const GetBrands(refresh: true));
     }
   }
 
@@ -574,7 +719,9 @@ class _VehicleFormScreenState extends State<_VehicleFormScreen> {
   // ===================================================================
 
   int _resolveInitialBrandId(Vehicle? v) {
-    if (v == null) return 0;
+    if (v == null) {
+      return 0;
+    }
 
     // Best case:
     // Backend already returned the brand ID.
@@ -583,7 +730,7 @@ class _VehicleFormScreenState extends State<_VehicleFormScreen> {
     }
 
     // Fallback:
-    // Find brand ID using the brand name.
+    // Find the ID using brand name.
     final state = context.read<BrandBloc>().state;
 
     if (state is BrandsLoaded) {
@@ -612,7 +759,6 @@ class _VehicleFormScreenState extends State<_VehicleFormScreen> {
       }
     }
 
-    // Fallback to existing vehicle brand when editing.
     return widget.vehicle?.brand ?? '';
   }
 
@@ -668,10 +814,8 @@ class _VehicleFormScreenState extends State<_VehicleFormScreen> {
     final vehicle = Vehicle(
       id: current?.id ?? 0,
 
-      // Brand ID selected from BrandDropdown.
       brandId: _brandId,
 
-      // Resolve name from BrandBloc.
       brand: _resolveBrandName(),
 
       model: _model.text.trim(),
@@ -714,11 +858,8 @@ class _VehicleFormScreenState extends State<_VehicleFormScreen> {
         vehicle: vehicle,
         imageEdits: VehicleImageEdits(
           newImages: List.unmodifiable(_pickedImages),
-
-          removeImageIds: Set.unmodifiable(_removedImageIds),
-
+          removeImageIds: Set.unmodifiable(_removedImageIds).toList(),
           primaryImageId: _isEditing ? _primaryExistingId : null,
-
           primaryNewImageIndex: _primaryNewImageIndex,
         ),
       ),
@@ -732,8 +873,13 @@ class _VehicleFormScreenState extends State<_VehicleFormScreen> {
   Future<void> _pickImages() async {
     final picked = await ImagePicker().pickMultiImage();
 
-    if (picked.isEmpty) return;
-    if (!mounted) return;
+    if (picked.isEmpty) {
+      return;
+    }
+
+    if (!mounted) {
+      return;
+    }
 
     setState(() {
       _pickedImages.addAll(picked.map((image) => File(image.path)));
@@ -842,7 +988,6 @@ class _VehicleFormScreenState extends State<_VehicleFormScreen> {
 
     final existingImages = _visibleExistingImages;
 
-    // Listen to BrandBloc instead of VehicleBloc.
     final brands = context.select<BrandBloc, List<Brand>>((bloc) {
       final state = bloc.state;
 
@@ -1401,15 +1546,19 @@ class _EditableExistingImages extends StatelessWidget {
                     child: Image.network(
                       image.fileUrl,
                       fit: BoxFit.cover,
-                      errorBuilder: (_, _, _) => Icon(
-                        Icons.broken_image_outlined,
-                        size: 24.r,
-                        color: colorScheme.onSurfaceVariant,
-                      ),
+                      errorBuilder: (_, _, _) {
+                        return Icon(
+                          Icons.broken_image_outlined,
+                          size: 24.r,
+                          color: colorScheme.onSurfaceVariant,
+                        );
+                      },
                     ),
                   ),
 
-                  // Primary
+                  // ---------------------------------------------------
+                  // PRIMARY
+                  // ---------------------------------------------------
                   Positioned(
                     top: 2,
                     left: 2,
@@ -1426,7 +1575,9 @@ class _EditableExistingImages extends StatelessWidget {
                     ),
                   ),
 
-                  // Delete
+                  // ---------------------------------------------------
+                  // DELETE
+                  // ---------------------------------------------------
                   Positioned(
                     top: 2,
                     right: 2,
@@ -1439,7 +1590,9 @@ class _EditableExistingImages extends StatelessWidget {
                     ),
                   ),
 
-                  // Replace
+                  // ---------------------------------------------------
+                  // REPLACE
+                  // ---------------------------------------------------
                   Positioned(
                     bottom: 2,
                     right: 2,
@@ -1523,7 +1676,9 @@ class _PickedImageTile extends StatelessWidget {
           child: Image.file(file, fit: BoxFit.cover),
         ),
 
-        // Primary
+        // -------------------------------------------------------------
+        // PRIMARY
+        // -------------------------------------------------------------
         Positioned(
           top: 2,
           left: 2,
@@ -1536,7 +1691,9 @@ class _PickedImageTile extends StatelessWidget {
           ),
         ),
 
-        // Remove
+        // -------------------------------------------------------------
+        // REMOVE
+        // -------------------------------------------------------------
         Positioned(
           top: 2,
           right: 2,

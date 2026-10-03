@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:dio/dio.dart';
 import 'package:vehicle_rental_system/core/constants/api_constants.dart';
+import 'package:vehicle_rental_system/feature/brand/data/model/page_response.dart';
 import 'package:vehicle_rental_system/feature/vehicle/data/datasource/vehicle_remote_data_source.dart';
 import 'package:vehicle_rental_system/feature/vehicle/data/model/vehicle_image_model.dart';
 import 'package:vehicle_rental_system/feature/vehicle/data/model/vehicle_model.dart';
@@ -12,27 +13,97 @@ class VehicleRemoteDataSourceImpl implements VehicleRemoteDataSource {
 
   VehicleRemoteDataSourceImpl(this.dio);
 
+  // @override
+  // Future<List<VehicleModel>> getVehicles() async {
+  //   // Spring Boot returns a raw JSON list (not wrapped in { data: ... }).
+  //   final response = await dio.get(ApiConstants.vehicles);
+
+  //   final data = response.data as List;
+
+  //   final vehicles = data
+  //       .map((json) => VehicleModel.fromJson(json as Map<String, dynamic>))
+  //       .toList();
+
+  //   for (final vehicle in vehicles) {
+  //     final images = await _fetchImages(vehicle.id);
+  //     if (images.isNotEmpty) {
+  //       vehicle.images
+  //         ..clear()
+  //         ..addAll(images);
+  //     }
+  //   }
+
+  //   return vehicles;
+  // }
   @override
-  Future<List<VehicleModel>> getVehicles() async {
-    // Spring Boot returns a raw JSON list (not wrapped in { data: ... }).
-    final response = await dio.get(ApiConstants.vehicles);
+  Future<PageResponse<VehicleModel>> getVehicles({
+    int page = 0,
+    int size = 10,
+    int? brandId,
+    String? type,
+    String? transmission,
+    String? fuelType,
+    double? minPrice,
+    double? maxPrice,
+    int? seats,
+  }) async {
+    final queryParameters = <String, dynamic>{'page': page, 'size': size};
 
-    final data = response.data as List;
+    // Only send filters that actually have a value.
+    if (brandId != null) {
+      queryParameters['brandId'] = brandId;
+    }
 
-    final vehicles = data
+    if (type != null && type.isNotEmpty) {
+      queryParameters['type'] = type;
+    }
+
+    if (transmission != null && transmission.isNotEmpty) {
+      queryParameters['transmission'] = transmission;
+    }
+
+    if (fuelType != null && fuelType.isNotEmpty) {
+      queryParameters['fuelType'] = fuelType;
+    }
+
+    if (minPrice != null) {
+      queryParameters['minPrice'] = minPrice;
+    }
+
+    if (maxPrice != null) {
+      queryParameters['maxPrice'] = maxPrice;
+    }
+
+    if (seats != null) {
+      queryParameters['seats'] = seats;
+    }
+
+    final response = await dio.get(
+      ApiConstants.vehicles,
+      queryParameters: queryParameters,
+    );
+
+    final body = response.data as Map<String, dynamic>;
+
+    final content = (body['content'] as List<dynamic>? ?? [])
         .map((json) => VehicleModel.fromJson(json as Map<String, dynamic>))
         .toList();
 
-    for (final vehicle in vehicles) {
-      final images = await _fetchImages(vehicle.id);
-      if (images.isNotEmpty) {
-        vehicle.images
-          ..clear()
-          ..addAll(images);
-      }
+    // VehicleResponseDTO carries no images, so each one has to be hydrated
+    // from GET /vehicle-images/{vehicleId}.
+    for (final vehicle in content) {
+      await _attachImages(vehicle);
     }
 
-    return vehicles;
+    return PageResponse<VehicleModel>(
+      content: content,
+      page: (body['number'] as num?)?.toInt() ?? 0,
+      size: (body['size'] as num?)?.toInt() ?? size,
+      totalElements: (body['totalElements'] as num?)?.toInt() ?? 0,
+      totalPages: (body['totalPages'] as num?)?.toInt() ?? 0,
+      first: body['first'] as bool? ?? false,
+      last: body['last'] as bool? ?? false,
+    );
   }
 
   @override
