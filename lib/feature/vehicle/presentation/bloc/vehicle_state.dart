@@ -13,12 +13,11 @@ class VehicleLoading extends VehicleState {}
 
 class VehicleLoaded extends VehicleState {
   final List<Vehicle> vehicles;
-  final List<Brand> brands;
 
-  const VehicleLoaded(this.vehicles, [this.brands = const []]);
+  const VehicleLoaded(this.vehicles);
 
   @override
-  List<Object?> get props => [vehicles, brands];
+  List<Object?> get props => [vehicles];
 }
 
 class VehicleError extends VehicleState {

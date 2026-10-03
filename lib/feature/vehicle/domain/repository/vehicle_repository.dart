@@ -3,13 +3,11 @@ import 'dart:io';
 import 'package:fpdart/fpdart.dart';
 import 'package:vehicle_rental_system/core/errors/failure.dart';
 import 'package:vehicle_rental_system/feature/vehicle/domain/entity/booked_date.dart';
-import 'package:vehicle_rental_system/feature/vehicle/domain/entity/brand.dart';
 import 'package:vehicle_rental_system/feature/vehicle/domain/entity/vehicle.dart';
 import 'package:vehicle_rental_system/feature/vehicle/domain/entity/vehicle_image.dart';
 
 abstract class VehicleRepository {
   Future<Either<Failure, List<Vehicle>>> getVehicles();
-  Future<Either<Failure, List<Brand>>> getBrands();
   Future<Either<Failure, Vehicle>> getVehicleById(int id);
   Future<Either<Failure, List<BookedDate>>> getVehicleBookedDates(int id);
   Future<Either<Failure, Vehicle>> createVehicle(Vehicle vehicle);

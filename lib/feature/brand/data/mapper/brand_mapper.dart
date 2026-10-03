@@ -1,5 +1,5 @@
-import 'package:vehicle_rental_system/feature/vehicle/data/model/brand_model.dart';
-import 'package:vehicle_rental_system/feature/vehicle/domain/entity/brand.dart';
+import 'package:vehicle_rental_system/feature/brand/data/model/brand_model.dart';
+import 'package:vehicle_rental_system/feature/brand/domain/entity/brand.dart';
 
 class BrandMapper {
   const BrandMapper._();

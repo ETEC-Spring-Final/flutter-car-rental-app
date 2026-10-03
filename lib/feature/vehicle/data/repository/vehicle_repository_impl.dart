@@ -3,11 +3,9 @@ import 'dart:io';
 import 'package:fpdart/fpdart.dart';
 import 'package:vehicle_rental_system/core/errors/failure.dart';
 import 'package:vehicle_rental_system/feature/vehicle/data/datasource/vehicle_remote_data_source.dart';
-import 'package:vehicle_rental_system/feature/vehicle/data/mapper/brand_mapper.dart';
 import 'package:vehicle_rental_system/feature/vehicle/data/mapper/vehicle_image_mapper.dart';
 import 'package:vehicle_rental_system/feature/vehicle/data/mapper/vehicle_mapper.dart';
 import 'package:vehicle_rental_system/feature/vehicle/domain/entity/booked_date.dart';
-import 'package:vehicle_rental_system/feature/vehicle/domain/entity/brand.dart';
 import 'package:vehicle_rental_system/feature/vehicle/domain/entity/vehicle.dart';
 import 'package:vehicle_rental_system/feature/vehicle/domain/entity/vehicle_image.dart';
 import 'package:vehicle_rental_system/feature/vehicle/domain/repository/vehicle_repository.dart';
@@ -16,17 +14,6 @@ class VehicleRepositoryImpl implements VehicleRepository {
   final VehicleRemoteDataSource remote;
 
   VehicleRepositoryImpl(this.remote);
-
-  @override
-  Future<Either<Failure, List<Brand>>> getBrands() async {
-    try {
-      final models = await remote.getBrands();
-
-      return Right(models.map(BrandMapper.toEntity).toList());
-    } catch (e) {
-      return Left(ServiceFailure(e.toString()));
-    }
-  }
 
   @override
   Future<Either<Failure, List<Vehicle>>> getVehicles() async {
@@ -54,7 +41,9 @@ class VehicleRepositoryImpl implements VehicleRepository {
   }
 
   @override
-  Future<Either<Failure, List<BookedDate>>> getVehicleBookedDates(int id) async {
+  Future<Either<Failure, List<BookedDate>>> getVehicleBookedDates(
+    int id,
+  ) async {
     try {
       final dates = await remote.getVehicleBookedDates(id);
 

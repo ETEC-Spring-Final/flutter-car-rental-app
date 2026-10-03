@@ -14,6 +14,7 @@ import 'package:vehicle_rental_system/core/widgets/app_notification.dart';
 import 'package:vehicle_rental_system/core/widgets/app_text_field.dart';
 import 'package:vehicle_rental_system/core/widgets/brand_chips_shimmer.dart';
 import 'package:vehicle_rental_system/core/widgets/shimmer_card.dart';
+import 'package:vehicle_rental_system/feature/brand/presentation/bloc/brand_bloc.dart';
 
 import 'package:vehicle_rental_system/feature/home/presentation/widgets/animated_greeting.dart';
 import 'package:vehicle_rental_system/feature/home/presentation/widgets/home_banner_slider.dart';
@@ -22,7 +23,7 @@ import 'package:vehicle_rental_system/feature/home/presentation/widgets/popular_
 
 import 'package:vehicle_rental_system/feature/notification/presentation/bloc/notification_bloc.dart';
 
-import 'package:vehicle_rental_system/feature/vehicle/domain/entity/brand.dart';
+import 'package:vehicle_rental_system/feature/brand/domain/entity/brand.dart';
 import 'package:vehicle_rental_system/feature/vehicle/domain/entity/vehicle.dart';
 
 import 'package:vehicle_rental_system/feature/vehicle/presentation/bloc/vehicle_bloc.dart';
@@ -61,9 +62,12 @@ class _HomeScreenState extends State<HomeScreen>
   // Index 1..n = categories
   int selectedCategoryIndex = 0;
 
-  // Becomes true after the first successful fetch so pull-to-refresh keeps
-  // showing the content instead of the loading skeleton.
+  // Becomes true after the first successful vehicle fetch.
   bool _hasLoadedOnce = false;
+
+  // ============================================================
+  // SELECTED BRAND
+  // ============================================================
 
   String _selectedBrandName(List<Brand> brands) {
     final index = selectedCategoryIndex - 1;
@@ -101,9 +105,11 @@ class _HomeScreenState extends State<HomeScreen>
   void initState() {
     super.initState();
 
-    // Load vehicles and brands from Spring Boot API
+    // Load vehicles
     context.read<VehicleBloc>().add(const GetVehicles());
-    context.read<VehicleBloc>().add(const GetBrands());
+
+    // Load brands
+    context.read<BrandBloc>().add(const GetBrands());
   }
 
   // ============================================================
@@ -112,7 +118,7 @@ class _HomeScreenState extends State<HomeScreen>
 
   Future<void> refreshData() async {
     context.read<VehicleBloc>().add(const GetVehicles());
-    context.read<VehicleBloc>().add(const GetBrands());
+    context.read<BrandBloc>().add(const GetBrands());
   }
 
   // ============================================================
@@ -129,19 +135,26 @@ class _HomeScreenState extends State<HomeScreen>
     return BlocListener<VehicleBloc, VehicleState>(
       listener: (context, state) {
         if (state is VehicleLoaded) {
-          _hasLoadedOnce = true;
+          setState(() {
+            _hasLoadedOnce = true;
+          });
         }
       },
       child: BlocBuilder<VehicleBloc, VehicleState>(
         builder: (context, state) {
-          // Show the full-page loading skeleton until brands and vehicles
-          // have been fetched successfully.
+          // ==========================================================
+          // INITIAL LOADING
+          // ==========================================================
+
           if (!_hasLoadedOnce &&
               (state is VehicleInitial || state is VehicleLoading)) {
             return const HomeLoadingSkeleton();
           }
 
-          // If the initial fetch completely failed, show a retry screen.
+          // ==========================================================
+          // INITIAL ERROR
+          // ==========================================================
+
           if (!_hasLoadedOnce && state is VehicleError) {
             return Scaffold(
               backgroundColor: colorScheme.surface,
@@ -151,13 +164,18 @@ class _HomeScreenState extends State<HomeScreen>
                     message: state.message,
                     onRetry: () {
                       context.read<VehicleBloc>().add(const GetVehicles());
-                      context.read<VehicleBloc>().add(const GetBrands());
+
+                      context.read<BrandBloc>().add(const GetBrands());
                     },
                   ),
                 ),
               ),
             );
           }
+
+          // ==========================================================
+          // HOME
+          // ==========================================================
 
           return Scaffold(
             body: CustomScrollView(
@@ -180,7 +198,6 @@ class _HomeScreenState extends State<HomeScreen>
                   pinned: false,
 
                   elevation: 0,
-
                   scrolledUnderElevation: 0,
 
                   backgroundColor: Theme.of(context).scaffoldBackgroundColor,
@@ -188,7 +205,6 @@ class _HomeScreenState extends State<HomeScreen>
                   surfaceTintColor: Colors.transparent,
 
                   titleSpacing: 16,
-
                   centerTitle: false,
 
                   title: const AnimatedGreeting(),
@@ -225,7 +241,6 @@ class _HomeScreenState extends State<HomeScreen>
                   onRefresh: refreshData,
 
                   refreshTriggerPullDistance: 90,
-
                   refreshIndicatorExtent: 56,
 
                   builder:
@@ -289,25 +304,33 @@ class _HomeScreenState extends State<HomeScreen>
                           SizedBox(height: 8.h),
 
                           // ==================================================
-                          // BRAND CATEGORY (from /api/brands)
+                          // BRAND CATEGORY
                           // ==================================================
-                          BlocBuilder<VehicleBloc, VehicleState>(
+                          BlocBuilder<BrandBloc, BrandState>(
                             builder: (context, state) {
-                              final isLoaded = state is VehicleLoaded;
+                              final isLoaded = state is BrandsLoaded;
+
                               final brands = isLoaded
                                   ? state.brands
                                   : const <Brand>[];
 
-                              // Show shimmer skeleton chips while the brand list is
-                              // being fetched from the API.
+                              // ------------------------------------------------
+                              // BRAND LOADING
+                              // ------------------------------------------------
+
                               if (!isLoaded) {
                                 return const BrandChipsShimmer();
                               }
+
+                              // ------------------------------------------------
+                              // BRAND LIST
+                              // ------------------------------------------------
 
                               return SizedBox(
                                 height: 55.h,
                                 child: ListView.separated(
                                   scrollDirection: Axis.horizontal,
+
                                   physics: const BouncingScrollPhysics(),
 
                                   padding: EdgeInsets.symmetric(
@@ -323,9 +346,9 @@ class _HomeScreenState extends State<HomeScreen>
                                   },
 
                                   itemBuilder: (context, index) {
-                                    // ==========================================
+                                    // ======================================
                                     // ALL
-                                    // ==========================================
+                                    // ======================================
 
                                     if (index == 0) {
                                       return _CategoryItem(
@@ -342,9 +365,9 @@ class _HomeScreenState extends State<HomeScreen>
                                       );
                                     }
 
-                                    // ==========================================
+                                    // ======================================
                                     // BRAND
-                                    // ==========================================
+                                    // ======================================
 
                                     final brand = brands[index - 1];
 
@@ -423,12 +446,16 @@ class _HomeScreenState extends State<HomeScreen>
                                   height: 270.h,
                                   child: ListView.separated(
                                     scrollDirection: Axis.horizontal,
+
                                     physics:
                                         const NeverScrollableScrollPhysics(),
+
                                     itemCount: 2,
+
                                     separatorBuilder: (_, _) {
                                       return SizedBox(width: 14.w);
                                     },
+
                                     itemBuilder: (context, index) {
                                       return ShimmerCard(
                                         width: 280.w,
@@ -459,16 +486,33 @@ class _HomeScreenState extends State<HomeScreen>
                               // ============================================
 
                               if (state is VehicleLoaded) {
+                                // Get brands from BrandBloc
+                                final brandState = context
+                                    .read<BrandBloc>()
+                                    .state;
+
+                                final brands = brandState is BrandsLoaded
+                                    ? brandState.brands
+                                    : const <Brand>[];
+
                                 final filteredVehicles = _filteredVehicles(
-                                  state.brands,
+                                  brands,
                                   state.vehicles,
                                 );
 
+                                // ==========================================
+                                // EMPTY
+                                // ==========================================
+
                                 if (filteredVehicles.isEmpty) {
                                   return _EmptyVehiclesWidget(
-                                    brand: _selectedBrandName(state.brands),
+                                    brand: _selectedBrandName(brands),
                                   );
                                 }
+
+                                // ==========================================
+                                // POPULAR CARS
+                                // ==========================================
 
                                 return PopularCarsSection(
                                   vehicles: filteredVehicles,
@@ -589,7 +633,9 @@ class _HomeScreenState extends State<HomeScreen>
                           return Column(
                             children: [
                               const ShimmerCard(),
+
                               SizedBox(height: 12.h),
+
                               const ShimmerCard(),
                             ],
                           );
@@ -615,16 +661,31 @@ class _HomeScreenState extends State<HomeScreen>
                         // ================================================
 
                         if (state is VehicleLoaded) {
+                          // Get brands from BrandBloc
+                          final brandState = context.read<BrandBloc>().state;
+
+                          final brands = brandState is BrandsLoaded
+                              ? brandState.brands
+                              : const <Brand>[];
+
                           final filteredVehicles = _filteredVehicles(
-                            state.brands,
+                            brands,
                             state.vehicles,
                           );
 
+                          // ==============================================
+                          // EMPTY
+                          // ==============================================
+
                           if (filteredVehicles.isEmpty) {
                             return _EmptyVehiclesWidget(
-                              brand: _selectedBrandName(state.brands),
+                              brand: _selectedBrandName(brands),
                             );
                           }
+
+                          // ==============================================
+                          // VEHICLES
+                          // ==============================================
 
                           return Column(
                             children: filteredVehicles.map((vehicle) {
@@ -633,9 +694,9 @@ class _HomeScreenState extends State<HomeScreen>
                                 child: VehicleCardExplore(
                                   vehicle: vehicle,
 
-                                  // ======================================
+                                  // ====================================
                                   // VEHICLE TAP
-                                  // ======================================
+                                  // ====================================
                                   onTap: () {
                                     log(
                                       'Recommended: '
@@ -655,9 +716,9 @@ class _HomeScreenState extends State<HomeScreen>
                                     );
                                   },
 
-                                  // ======================================
+                                  // ====================================
                                   // FAVORITE
-                                  // ======================================
+                                  // ====================================
                                   onFavoriteTap: () {
                                     log(
                                       'Recommended favorite: '
@@ -672,6 +733,10 @@ class _HomeScreenState extends State<HomeScreen>
                             }).toList(),
                           );
                         }
+
+                        // ================================================
+                        // INITIAL
+                        // ================================================
 
                         return const SizedBox.shrink();
                       },
@@ -742,7 +807,6 @@ class _CategoryItem extends StatelessWidget {
                 color: isSelected
                     ? colorScheme.primary
                     : colorScheme.outline.withValues(alpha: 0.15),
-
                 width: isSelected ? 1.5 : 1,
               ),
 
@@ -771,9 +835,7 @@ class _CategoryItem extends StatelessWidget {
                             isSelected
                                 ? Icons.check_circle
                                 : Icons.grid_view_rounded,
-
                             size: 22.r,
-
                             color: isSelected
                                 ? colorScheme.primary
                                 : colorScheme.onSurfaceVariant,
@@ -783,19 +845,14 @@ class _CategoryItem extends StatelessWidget {
 
                           Text(
                             title,
-
                             textAlign: TextAlign.center,
-
                             maxLines: 1,
-
                             overflow: TextOverflow.ellipsis,
-
                             style: Theme.of(context).textTheme.labelSmall
                                 ?.copyWith(
                                   color: isSelected
                                       ? colorScheme.primary
                                       : colorScheme.onSurface,
-
                                   fontWeight: FontWeight.w600,
                                 ),
                           ),
@@ -807,11 +864,8 @@ class _CategoryItem extends StatelessWidget {
                   // ==================================================
                   : Image.network(
                       image,
-
                       fit: BoxFit.contain,
-
                       filterQuality: FilterQuality.high,
-
                       errorBuilder: (context, error, stackTrace) {
                         return Icon(
                           Icons.image_not_supported_outlined,
@@ -857,11 +911,9 @@ class _EmptyVehiclesWidget extends StatelessWidget {
             brand.isEmpty
                 ? 'No vehicles available'
                 : 'No $brand cars available',
-
             style: theme.textTheme.titleMedium?.copyWith(
               fontWeight: FontWeight.w600,
             ),
-
             textAlign: TextAlign.center,
           ),
         ],

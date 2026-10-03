@@ -1,9 +1,9 @@
 class BrandModel {
-  const BrandModel({required this.id, required this.name, this.imageUrl = ''});
-
   final int id;
   final String name;
   final String imageUrl;
+
+  const BrandModel({required this.id, required this.name, this.imageUrl = ''});
 
   factory BrandModel.fromJson(Map<String, dynamic> json) {
     return BrandModel(
@@ -13,5 +13,9 @@ class BrandModel {
     );
   }
 
-  Map<String, dynamic> toJson() => {'id': id, 'name': name, 'imageUrl': imageUrl};
+  Map<String, dynamic> toJson() => {
+    'id': id,
+    'name': name,
+    'imageUrl': imageUrl,
+  };
 }

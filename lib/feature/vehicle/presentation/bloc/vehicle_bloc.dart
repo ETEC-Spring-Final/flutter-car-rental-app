@@ -2,7 +2,7 @@ import 'dart:io';
 
 import 'package:bloc/bloc.dart';
 import 'package:equatable/equatable.dart';
-import 'package:vehicle_rental_system/feature/vehicle/domain/entity/brand.dart';
+import 'package:vehicle_rental_system/feature/brand/domain/entity/brand.dart';
 import 'package:vehicle_rental_system/feature/vehicle/domain/entity/vehicle.dart';
 import 'package:vehicle_rental_system/feature/vehicle/domain/entity/vehicle_image.dart';
 import 'package:vehicle_rental_system/feature/vehicle/domain/repository/vehicle_repository.dart';
@@ -26,7 +26,6 @@ class VehicleBloc extends Bloc<VehicleEvent, VehicleState> {
   VehicleBloc(this.repository) : super(VehicleInitial()) {
     on<GetVehicles>(_onGetVehicles);
     on<GetVehicleById>(_onGetVehicleById);
-    on<GetBrands>(_onGetBrands);
     on<CreateVehicleEvent>(_onCreateVehicle);
     on<UpdateVehicleEvent>(_onUpdateVehicle);
     on<DeleteVehicleEvent>(_onDeleteVehicle);
@@ -43,27 +42,8 @@ class VehicleBloc extends Bloc<VehicleEvent, VehicleState> {
     result.fold((failure) => emit(VehicleError(failure.message)), (vehicles) {
       _vehicles = vehicles;
       _vehiclesLoaded = true;
-      emit(VehicleLoaded(_vehicles, _brands));
+      emit(VehicleLoaded(_vehicles));
     });
-  }
-
-  Future<void> _onGetBrands(GetBrands event, Emitter<VehicleState> emit) async {
-    final result = await repository.getBrands();
-
-    result.fold(
-      (failure) {
-        if (_vehicles.isEmpty) emit(VehicleError(failure.message));
-      },
-      (brands) {
-        _brands = brands;
-        // Don't emit VehicleLoaded until the vehicle list has been fetched,
-        // otherwise the UI briefly shows an empty state while /vehicles is
-        // still loading.
-        if (_vehiclesLoaded) {
-          emit(VehicleLoaded(_vehicles, _brands));
-        }
-      },
-    );
   }
 
   Future<void> _onGetVehicleById(
@@ -76,7 +56,7 @@ class VehicleBloc extends Bloc<VehicleEvent, VehicleState> {
 
     result.fold((failure) => emit(VehicleError(failure.message)), (vehicle) {
       _vehicles = [vehicle];
-      emit(VehicleLoaded(_vehicles, _brands));
+      emit(VehicleLoaded(_vehicles));
     });
   }
 

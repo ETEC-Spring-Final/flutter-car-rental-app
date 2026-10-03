@@ -1,7 +1,7 @@
 import 'dart:io';
 
 import 'package:vehicle_rental_system/feature/vehicle/data/datasource/vehicle_remote_data_source.dart';
-import 'package:vehicle_rental_system/feature/vehicle/data/model/brand_model.dart';
+import 'package:vehicle_rental_system/feature/brand/data/model/brand_model.dart';
 import 'package:vehicle_rental_system/feature/vehicle/data/model/vehicle_image_model.dart';
 import 'package:vehicle_rental_system/feature/vehicle/data/model/vehicle_model.dart';
 import 'package:vehicle_rental_system/feature/vehicle/domain/entity/booked_date.dart';
@@ -45,6 +45,7 @@ class VehicleRemoteDataSourceFake implements VehicleRemoteDataSource {
 
     return const [];
   }
+
   @override
   Future<List<VehicleModel>> getVehicles() async {
     await Future.delayed(const Duration(milliseconds: 500));

@@ -6,7 +6,8 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:image_picker/image_picker.dart';
 
 import 'package:vehicle_rental_system/app/theme/app_dimensions.dart';
-import 'package:vehicle_rental_system/feature/vehicle/domain/entity/brand.dart';
+import 'package:vehicle_rental_system/feature/brand/domain/entity/brand.dart';
+import 'package:vehicle_rental_system/feature/brand/presentation/bloc/brand_bloc.dart';
 import 'package:vehicle_rental_system/feature/vehicle/domain/entity/vehicle.dart';
 import 'package:vehicle_rental_system/feature/vehicle/domain/entity/vehicle_image.dart';
 import 'package:vehicle_rental_system/feature/vehicle/presentation/bloc/vehicle_bloc.dart';
@@ -22,15 +23,14 @@ class _VehicleCrudScreenState extends State<VehicleCrudScreen> {
   @override
   void initState() {
     super.initState();
-    context.read<VehicleBloc>()
-      ..add(const GetVehicles())
-      ..add(const GetBrands());
+
+    context.read<VehicleBloc>().add(const GetVehicles());
+    context.read<BrandBloc>().add(const GetBrands());
   }
 
   Future<void> _refresh() async {
-    context.read<VehicleBloc>()
-      ..add(const GetVehicles())
-      ..add(const GetBrands());
+    context.read<VehicleBloc>().add(const GetVehicles());
+    context.read<BrandBloc>().add(const GetBrands());
   }
 
   Future<void> _openForm([Vehicle? vehicle]) async {
@@ -165,6 +165,7 @@ class _VehicleCrudScreenState extends State<VehicleCrudScreen> {
                 separatorBuilder: (_, _) => SizedBox(height: 12.h),
                 itemBuilder: (context, index) {
                   final vehicle = state.vehicles[index];
+
                   return _VehicleCard(
                     vehicle: vehicle,
                     onEdit: () => _openForm(vehicle),
@@ -274,7 +275,8 @@ class _VehicleCard extends StatelessWidget {
                   ),
                   SizedBox(height: 4.h),
                   Text(
-                    '${vehicle.yearOfManufacture} • ${vehicle.type} • '
+                    '${vehicle.yearOfManufacture} • '
+                    '${vehicle.type} • '
                     '${vehicle.licensePlate}',
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
@@ -414,7 +416,7 @@ class _VehicleFormResult {
 }
 
 // =====================================================================
-// VEHICLE FORM (create / edit)
+// VEHICLE FORM
 // =====================================================================
 
 class _VehicleFormScreen extends StatefulWidget {
@@ -428,16 +430,17 @@ class _VehicleFormScreen extends StatefulWidget {
 
 class _VehicleFormScreenState extends State<_VehicleFormScreen> {
   final _formKey = GlobalKey<FormState>();
+
   final List<File> _pickedImages = [];
   final Set<int> _removedImageIds = {};
 
-  /// Maps an existing image id to the replacement file picked by the user.
+  /// Existing image ID -> replacement file.
   final Map<int, File> _replaceMap = {};
 
-  /// Existing image id that should become the primary/cover photo.
+  /// Existing image ID that becomes the primary image.
   int? _primaryExistingId;
 
-  /// Index into [_pickedImages] that should become the primary/cover photo.
+  /// New image index that becomes the primary image.
   int? _primaryNewImageIndex;
 
   late final TextEditingController _model;
@@ -490,16 +493,6 @@ class _VehicleFormScreenState extends State<_VehicleFormScreen> {
 
   bool get _isEditing => widget.vehicle != null;
 
-  /// Resolves the selected brand's display name from the current BLoC state.
-  String? get _brandName {
-    final state = context.read<VehicleBloc>().state;
-    if (state is! VehicleLoaded) return null;
-    for (final brand in state.brands) {
-      if (brand.id == _brandId) return brand.name;
-    }
-    return null;
-  }
-
   @override
   void initState() {
     super.initState();
@@ -507,38 +500,55 @@ class _VehicleFormScreenState extends State<_VehicleFormScreen> {
     final v = widget.vehicle;
 
     _model = TextEditingController(text: v?.model ?? '');
+
     _year = TextEditingController(
       text: v != null ? v.yearOfManufacture.toString() : '',
     );
+
     _licensePlate = TextEditingController(text: v?.licensePlate ?? '');
+
     _color = TextEditingController(text: v?.color ?? '');
+
     _seats = TextEditingController(text: v != null ? v.seats.toString() : '');
+
     _doors = TextEditingController(text: v != null ? v.doors.toString() : '');
+
     _luggages = TextEditingController(
       text: v != null ? v.luggages.toString() : '',
     );
+
     _price = TextEditingController(
       text: v != null ? _dropTrailingZeros(v.pricePerDay) : '',
     );
+
     _mileAge = TextEditingController(
       text: v != null ? v.mileAge.toString() : '',
     );
+
     _description = TextEditingController(text: v?.description ?? '');
 
     _types = _withFallback(_defaultTypes, v?.type);
+
     _transmissions = _withFallback(_defaultTransmissions, v?.transmission);
+
     _fuelTypes = _withFallback(_defaultFuelTypes, v?.fuelType);
+
     _statuses = _withFallback(_defaultStatuses, v?.status);
 
     _type = _types.contains(v?.type) ? v!.type : _types.first;
+
     _transmission = _transmissions.contains(v?.transmission)
         ? v!.transmission
         : _transmissions.first;
+
     _fuelType = _fuelTypes.contains(v?.fuelType)
         ? v!.fuelType
         : _fuelTypes.first;
+
     _status = _statuses.contains(v?.status) ? v!.status : _statuses.first;
 
+    // Prefer vehicle.brandId.
+    // If unavailable, try finding the ID by brand name.
     _brandId = _resolveInitialBrandId(v);
 
     if (v != null) {
@@ -550,27 +560,75 @@ class _VehicleFormScreenState extends State<_VehicleFormScreen> {
       }
     }
 
-    final state = context.read<VehicleBloc>().state;
-    if (state is! VehicleLoaded || state.brands.isEmpty) {
-      context.read<VehicleBloc>().add(const GetBrands());
+    // IMPORTANT:
+    // BrandsLoaded belongs to BrandBloc.
+    final state = context.read<BrandBloc>().state;
+
+    if (state is! BrandsLoaded) {
+      context.read<BrandBloc>().add(const GetBrands());
     }
   }
+
+  // ===================================================================
+  // BRAND ID
+  // ===================================================================
 
   int _resolveInitialBrandId(Vehicle? v) {
     if (v == null) return 0;
-    if (v.brandId != 0) return v.brandId;
 
-    final state = context.read<VehicleBloc>().state;
-    final brands = state is VehicleLoaded ? state.brands : const <Brand>[];
-    for (final brand in brands) {
-      if (brand.name == v.brand) return brand.id;
+    // Best case:
+    // Backend already returned the brand ID.
+    if (v.brandId != 0) {
+      return v.brandId;
     }
+
+    // Fallback:
+    // Find brand ID using the brand name.
+    final state = context.read<BrandBloc>().state;
+
+    if (state is BrandsLoaded) {
+      for (final brand in state.brands) {
+        if (brand.name == v.brand) {
+          return brand.id;
+        }
+      }
+    }
+
     return 0;
   }
 
+  // ===================================================================
+  // BRAND NAME
+  // ===================================================================
+
+  String _resolveBrandName() {
+    final state = context.read<BrandBloc>().state;
+
+    if (state is BrandsLoaded) {
+      for (final brand in state.brands) {
+        if (brand.id == _brandId) {
+          return brand.name;
+        }
+      }
+    }
+
+    // Fallback to existing vehicle brand when editing.
+    return widget.vehicle?.brand ?? '';
+  }
+
+  // ===================================================================
+  // HELPERS
+  // ===================================================================
+
   static List<String> _withFallback(List<String> options, String? value) {
-    if (value == null || value.isEmpty) return options;
-    if (options.contains(value)) return options;
+    if (value == null || value.isEmpty) {
+      return options;
+    }
+
+    if (options.contains(value)) {
+      return options;
+    }
+
     return [value, ...options];
   }
 
@@ -592,34 +650,62 @@ class _VehicleFormScreenState extends State<_VehicleFormScreen> {
     _price.dispose();
     _mileAge.dispose();
     _description.dispose();
+
     super.dispose();
   }
 
+  // ===================================================================
+  // SUBMIT
+  // ===================================================================
+
   void _submit() {
-    if (!_formKey.currentState!.validate()) return;
+    if (!_formKey.currentState!.validate()) {
+      return;
+    }
 
     final current = widget.vehicle;
 
     final vehicle = Vehicle(
       id: current?.id ?? 0,
+
+      // Brand ID selected from BrandDropdown.
       brandId: _brandId,
-      brand: _brandName ?? '',
+
+      // Resolve name from BrandBloc.
+      brand: _resolveBrandName(),
+
       model: _model.text.trim(),
+
       yearOfManufacture: int.parse(_year.text.trim()),
+
       licensePlate: _licensePlate.text.trim(),
+
       color: _color.text.trim(),
+
       type: _type,
+
       transmission: _transmission,
+
       fuelType: _fuelType,
+
       seats: int.parse(_seats.text.trim()),
+
       doors: int.parse(_doors.text.trim()),
+
       luggages: int.parse(_luggages.text.trim()),
+
       pricePerDay: double.parse(_price.text.trim()),
+
       mileAge: int.parse(_mileAge.text.trim()),
+
       description: _description.text.trim(),
+
       status: _status,
+
       images: current?.images ?? const [],
+
       createdAt: current?.createdAt,
+
       updatedAt: current?.updatedAt,
     );
 
@@ -628,13 +714,20 @@ class _VehicleFormScreenState extends State<_VehicleFormScreen> {
         vehicle: vehicle,
         imageEdits: VehicleImageEdits(
           newImages: List.unmodifiable(_pickedImages),
+
           removeImageIds: Set.unmodifiable(_removedImageIds),
+
           primaryImageId: _isEditing ? _primaryExistingId : null,
+
           primaryNewImageIndex: _primaryNewImageIndex,
         ),
       ),
     );
   }
+
+  // ===================================================================
+  // PICK IMAGES
+  // ===================================================================
 
   Future<void> _pickImages() async {
     final picked = await ImagePicker().pickMultiImage();
@@ -654,12 +747,14 @@ class _VehicleFormScreenState extends State<_VehicleFormScreen> {
       _pickedImages.removeAt(index);
 
       int? replacedId;
+
       for (final entry in _replaceMap.entries) {
         if (entry.value.path == file.path) {
           replacedId = entry.key;
           break;
         }
       }
+
       if (replacedId != null) {
         _replaceMap.remove(replacedId);
         _removedImageIds.remove(replacedId);
@@ -674,9 +769,16 @@ class _VehicleFormScreenState extends State<_VehicleFormScreen> {
     });
   }
 
+  // ===================================================================
+  // EXISTING IMAGES
+  // ===================================================================
+
   List<VehicleImage> get _visibleExistingImages {
     final current = widget.vehicle;
-    if (current == null) return const [];
+
+    if (current == null) {
+      return const [];
+    }
 
     return current.images
         .where((image) => !_removedImageIds.contains(image.id))
@@ -701,40 +803,55 @@ class _VehicleFormScreenState extends State<_VehicleFormScreen> {
     setState(() {
       _removedImageIds.add(image.id);
       _replaceMap.remove(image.id);
-      if (_primaryExistingId == image.id) _primaryExistingId = null;
+
+      if (_primaryExistingId == image.id) {
+        _primaryExistingId = null;
+      }
     });
   }
 
   Future<void> _replaceExistingImage(VehicleImage image) async {
     final picked = await ImagePicker().pickImage(source: ImageSource.gallery);
 
-    if (picked == null || !mounted) return;
+    if (picked == null || !mounted) {
+      return;
+    }
 
     setState(() {
       _removedImageIds.add(image.id);
+
       _replaceMap[image.id] = File(picked.path);
+
       _pickedImages.add(File(picked.path));
 
       if (_primaryExistingId == image.id) {
         _primaryExistingId = null;
+
         _primaryNewImageIndex = _pickedImages.length - 1;
       }
     });
   }
 
+  // ===================================================================
+  // BUILD
+  // ===================================================================
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+
     final existingImages = _visibleExistingImages;
 
-    final brands = context.select<VehicleBloc, List<Brand>>(
-      (bloc) {
-        final state = bloc.state;
-        return state is VehicleLoaded ? state.brands : const <Brand>[];
-      },
-    );
-    final selectedBrandId =
-        _brandId != 0 && brands.any((b) => b.id == _brandId) ? _brandId : null;
+    // Listen to BrandBloc instead of VehicleBloc.
+    final brands = context.select<BrandBloc, List<Brand>>((bloc) {
+      final state = bloc.state;
+
+      return state is BrandsLoaded ? state.brands : const <Brand>[];
+    });
+
+    final selectedBrandId = _brandId != 0 && brands.any((b) => b.id == _brandId)
+        ? _brandId
+        : null;
 
     return Scaffold(
       appBar: AppBar(title: Text(_isEditing ? 'Edit Vehicle' : 'Add Vehicle')),
@@ -745,30 +862,48 @@ class _VehicleFormScreenState extends State<_VehicleFormScreen> {
           children: [
             Text(
               _isEditing
-                  ? 'Updating vehicle ID ${widget.vehicle!.id}'
-                  : 'Fill in the details below. A new vehicle will be '
-                        'created via POST /vehicles.',
+                  ? 'Updating vehicle ID '
+                        '${widget.vehicle!.id}'
+                  : 'Fill in the details below. '
+                        'A new vehicle will be created '
+                        'via POST /vehicles.',
               style: theme.textTheme.bodyMedium?.copyWith(
                 color: theme.colorScheme.onSurfaceVariant,
               ),
             ),
+
             SizedBox(height: 16.h),
 
+            // =========================================================
+            // BRAND
+            // =========================================================
             _BrandDropdown(
               brands: brands,
               value: selectedBrandId,
-              onChanged: (value) => setState(() => _brandId = value ?? 0),
+              onChanged: (value) {
+                setState(() {
+                  _brandId = value ?? 0;
+                });
+              },
             ),
+
             SizedBox(height: 12.h),
 
+            // =========================================================
+            // MODEL
+            // =========================================================
             _TextForm(
               controller: _model,
               label: 'Model',
               hint: 'e.g. Camry',
               validator: _required,
             ),
+
             SizedBox(height: 12.h),
 
+            // =========================================================
+            // YEAR + LICENSE PLATE
+            // =========================================================
             Row(
               children: [
                 Expanded(
@@ -779,7 +914,9 @@ class _VehicleFormScreenState extends State<_VehicleFormScreen> {
                     validator: (value) => _requiredNumber(value),
                   ),
                 ),
+
                 SizedBox(width: 12.w),
+
                 Expanded(
                   child: _TextForm(
                     controller: _licensePlate,
@@ -790,8 +927,12 @@ class _VehicleFormScreenState extends State<_VehicleFormScreen> {
                 ),
               ],
             ),
+
             SizedBox(height: 12.h),
 
+            // =========================================================
+            // COLOR + TYPE
+            // =========================================================
             Row(
               children: [
                 Expanded(
@@ -802,20 +943,29 @@ class _VehicleFormScreenState extends State<_VehicleFormScreen> {
                     validator: _required,
                   ),
                 ),
+
                 SizedBox(width: 12.w),
+
                 Expanded(
                   child: _DropdownForm<String>(
                     label: 'Type',
                     value: _type,
                     items: _types,
-                    onChanged: (value) =>
-                        setState(() => _type = value ?? _types.first),
+                    onChanged: (value) {
+                      setState(() {
+                        _type = value ?? _types.first;
+                      });
+                    },
                   ),
                 ),
               ],
             ),
+
             SizedBox(height: 12.h),
 
+            // =========================================================
+            // TRANSMISSION + FUEL
+            // =========================================================
             Row(
               children: [
                 Expanded(
@@ -823,25 +973,36 @@ class _VehicleFormScreenState extends State<_VehicleFormScreen> {
                     label: 'Transmission',
                     value: _transmission,
                     items: _transmissions,
-                    onChanged: (value) => setState(
-                      () => _transmission = value ?? _transmissions.first,
-                    ),
+                    onChanged: (value) {
+                      setState(() {
+                        _transmission = value ?? _transmissions.first;
+                      });
+                    },
                   ),
                 ),
+
                 SizedBox(width: 12.w),
+
                 Expanded(
                   child: _DropdownForm<String>(
                     label: 'Fuel Type',
                     value: _fuelType,
                     items: _fuelTypes,
-                    onChanged: (value) =>
-                        setState(() => _fuelType = value ?? _fuelTypes.first),
+                    onChanged: (value) {
+                      setState(() {
+                        _fuelType = value ?? _fuelTypes.first;
+                      });
+                    },
                   ),
                 ),
               ],
             ),
+
             SizedBox(height: 12.h),
 
+            // =========================================================
+            // SEATS + DOORS + LUGGAGES
+            // =========================================================
             Row(
               children: [
                 Expanded(
@@ -852,7 +1013,9 @@ class _VehicleFormScreenState extends State<_VehicleFormScreen> {
                     validator: (value) => _requiredNumber(value),
                   ),
                 ),
+
                 SizedBox(width: 12.w),
+
                 Expanded(
                   child: _TextForm(
                     controller: _doors,
@@ -861,7 +1024,9 @@ class _VehicleFormScreenState extends State<_VehicleFormScreen> {
                     validator: (value) => _requiredNumber(value),
                   ),
                 ),
+
                 SizedBox(width: 12.w),
+
                 Expanded(
                   child: _TextForm(
                     controller: _luggages,
@@ -872,8 +1037,12 @@ class _VehicleFormScreenState extends State<_VehicleFormScreen> {
                 ),
               ],
             ),
+
             SizedBox(height: 12.h),
 
+            // =========================================================
+            // PRICE + MILEAGE
+            // =========================================================
             Row(
               children: [
                 Expanded(
@@ -887,7 +1056,9 @@ class _VehicleFormScreenState extends State<_VehicleFormScreen> {
                     validator: (value) => _requiredNumber(value, decimal: true),
                   ),
                 ),
+
                 SizedBox(width: 12.w),
+
                 Expanded(
                   child: _TextForm(
                     controller: _mileAge,
@@ -898,42 +1069,58 @@ class _VehicleFormScreenState extends State<_VehicleFormScreen> {
                 ),
               ],
             ),
+
             SizedBox(height: 12.h),
 
+            // =========================================================
+            // STATUS
+            // =========================================================
             _DropdownForm<String>(
               label: 'Status',
               value: _status,
               items: _statuses,
-              onChanged: (value) =>
-                  setState(() => _status = value ?? _statuses.first),
+              onChanged: (value) {
+                setState(() {
+                  _status = value ?? _statuses.first;
+                });
+              },
             ),
+
             SizedBox(height: 12.h),
 
+            // =========================================================
+            // DESCRIPTION
+            // =========================================================
             _TextForm(
               controller: _description,
               label: 'Description (optional)',
               hint: 'Short description shown on the detail screen.',
               maxLines: 4,
             ),
+
             SizedBox(height: 20.h),
 
-            // =====================================================
+            // =========================================================
             // IMAGES
-            // =====================================================
+            // =========================================================
             Text(
               'Images',
               style: theme.textTheme.titleMedium?.copyWith(
                 fontWeight: FontWeight.w700,
               ),
             ),
+
             SizedBox(height: 4.h),
+
             Text(
-              'Tap the star to set the cover photo. Use the trash icon to '
-              'remove an existing photo, or the swap icon to replace it.',
+              'Tap the star to set the cover photo. '
+              'Use the trash icon to remove an existing '
+              'photo, or the swap icon to replace it.',
               style: theme.textTheme.bodySmall?.copyWith(
                 color: theme.colorScheme.onSurfaceVariant,
               ),
             ),
+
             SizedBox(height: 12.h),
 
             if (_isEditing && existingImages.isNotEmpty) ...[
@@ -944,6 +1131,7 @@ class _VehicleFormScreenState extends State<_VehicleFormScreen> {
                 onDelete: _deleteExistingImage,
                 onReplace: _replaceExistingImage,
               ),
+
               SizedBox(height: 12.h),
             ],
 
@@ -964,9 +1152,13 @@ class _VehicleFormScreenState extends State<_VehicleFormScreen> {
                     ),
                 ],
               ),
+
               SizedBox(height: 12.h),
             ],
 
+            // =========================================================
+            // ADD IMAGES
+            // =========================================================
             OutlinedButton.icon(
               onPressed: _pickImages,
               icon: const Icon(Icons.add_photo_alternate_outlined),
@@ -979,18 +1171,24 @@ class _VehicleFormScreenState extends State<_VehicleFormScreen> {
                 padding: EdgeInsets.symmetric(vertical: 14.h),
               ),
             ),
+
             SizedBox(height: 8.h),
 
             Text(
               _pickedImages.isEmpty
                   ? 'No images selected.'
-                  : '${_pickedImages.length} image(s) selected.',
+                  : '${_pickedImages.length} '
+                        'image(s) selected.',
               style: theme.textTheme.bodySmall?.copyWith(
                 color: theme.colorScheme.onSurfaceVariant,
               ),
             ),
+
             SizedBox(height: 16.h),
 
+            // =========================================================
+            // SUBMIT
+            // =========================================================
             FilledButton.icon(
               onPressed: _submit,
               style: FilledButton.styleFrom(
@@ -1004,6 +1202,7 @@ class _VehicleFormScreenState extends State<_VehicleFormScreen> {
                 ),
               ),
             ),
+
             SizedBox(height: 40.h),
           ],
         ),
@@ -1011,19 +1210,36 @@ class _VehicleFormScreenState extends State<_VehicleFormScreen> {
     );
   }
 
+  // ===================================================================
+  // VALIDATION
+  // ===================================================================
+
   String? _required(String? value) {
     final text = value?.trim() ?? '';
-    if (text.isEmpty) return 'Required';
+
+    if (text.isEmpty) {
+      return 'Required';
+    }
+
     return null;
   }
 
   String? _requiredNumber(String? value, {bool decimal = false}) {
     final text = value?.trim() ?? '';
-    if (text.isEmpty) return 'Required';
+
+    if (text.isEmpty) {
+      return 'Required';
+    }
 
     final number = decimal ? double.tryParse(text) : int.tryParse(text);
-    if (number == null) return 'Must be a number';
-    if (number < 0) return 'Must be 0 or more';
+
+    if (number == null) {
+      return 'Must be a number';
+    }
+
+    if (number < 0) {
+      return 'Must be 0 or more';
+    }
 
     return null;
   }
@@ -1105,7 +1321,7 @@ class _DropdownForm<T> extends StatelessWidget {
 }
 
 // =====================================================================
-// BRAND DROPDOWN (loaded from the backend /vehicle/brands)
+// BRAND DROPDOWN
 // =====================================================================
 
 class _BrandDropdown extends StatelessWidget {
@@ -1122,6 +1338,7 @@ class _BrandDropdown extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final enabled = brands.isNotEmpty;
+
     final selected = enabled && brands.any((b) => b.id == value) ? value : null;
 
     return DropdownButtonFormField<int>(
@@ -1145,7 +1362,7 @@ class _BrandDropdown extends StatelessWidget {
 }
 
 // =====================================================================
-// EDITABLE EXISTING IMAGES (edit mode — star / delete / replace)
+// EDITABLE EXISTING IMAGES
 // =====================================================================
 
 class _EditableExistingImages extends StatelessWidget {
@@ -1191,6 +1408,8 @@ class _EditableExistingImages extends StatelessWidget {
                       ),
                     ),
                   ),
+
+                  // Primary
                   Positioned(
                     top: 2,
                     left: 2,
@@ -1206,6 +1425,8 @@ class _EditableExistingImages extends StatelessWidget {
                       onTap: () => onSetPrimary(image),
                     ),
                   ),
+
+                  // Delete
                   Positioned(
                     top: 2,
                     right: 2,
@@ -1217,6 +1438,8 @@ class _EditableExistingImages extends StatelessWidget {
                       onTap: () => onDelete(image),
                     ),
                   ),
+
+                  // Replace
                   Positioned(
                     bottom: 2,
                     right: 2,
@@ -1237,7 +1460,7 @@ class _EditableExistingImages extends StatelessWidget {
 }
 
 // =====================================================================
-// IMAGE ACTION BUTTON (star / close / swap)
+// IMAGE ACTION BUTTON
 // =====================================================================
 
 class _ImageActionButton extends StatelessWidget {
@@ -1263,10 +1486,7 @@ class _ImageActionButton extends StatelessWidget {
         message: tooltip,
         child: Container(
           padding: EdgeInsets.all(4.r),
-          decoration: BoxDecoration(
-            color: background,
-            shape: BoxShape.circle,
-          ),
+          decoration: BoxDecoration(color: background, shape: BoxShape.circle),
           child: Icon(icon, size: 14.r, color: color),
         ),
       ),
@@ -1275,7 +1495,7 @@ class _ImageActionButton extends StatelessWidget {
 }
 
 // =====================================================================
-// PICKED IMAGE TILE (with primary star + remove)
+// PICKED IMAGE TILE
 // =====================================================================
 
 class _PickedImageTile extends StatelessWidget {
@@ -1302,19 +1522,21 @@ class _PickedImageTile extends StatelessWidget {
           borderRadius: BorderRadius.circular(10.r),
           child: Image.file(file, fit: BoxFit.cover),
         ),
+
+        // Primary
         Positioned(
           top: 2,
           left: 2,
           child: _ImageActionButton(
-            icon: isPrimary
-                ? Icons.star_rounded
-                : Icons.star_outline_rounded,
+            icon: isPrimary ? Icons.star_rounded : Icons.star_outline_rounded,
             color: isPrimary ? Colors.amber : colorScheme.onSurface,
             background: Colors.black45,
             tooltip: 'Set as cover photo',
             onTap: onSetPrimary ?? () {},
           ),
         ),
+
+        // Remove
         Positioned(
           top: 2,
           right: 2,

@@ -11,10 +11,6 @@ class GetVehicles extends VehicleEvent {
   const GetVehicles();
 }
 
-class GetBrands extends VehicleEvent {
-  const GetBrands();
-}
-
 class GetVehicleById extends VehicleEvent {
   final int id;
 
@@ -45,7 +41,8 @@ class VehicleImageEdits {
     this.primaryNewImageIndex,
   });
 
-  bool get isEmpty => newImages.isEmpty &&
+  bool get isEmpty =>
+      newImages.isEmpty &&
       removeImageIds.isEmpty &&
       primaryImageId == null &&
       primaryNewImageIndex == null;
@@ -59,8 +56,12 @@ class VehicleImageEdits {
       primaryNewImageIndex == other.primaryNewImageIndex;
 
   @override
-  int get hashCode =>
-      Object.hash(newImages, removeImageIds, primaryImageId, primaryNewImageIndex);
+  int get hashCode => Object.hash(
+    newImages,
+    removeImageIds,
+    primaryImageId,
+    primaryNewImageIndex,
+  );
 }
 
 class CreateVehicleEvent extends VehicleEvent {
