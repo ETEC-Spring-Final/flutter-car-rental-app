@@ -9,23 +9,18 @@ import 'package:vehicle_rental_system/app/router/app_routes.dart';
 
 import 'package:vehicle_rental_system/app/theme/app_colors.dart';
 import 'package:vehicle_rental_system/app/theme/app_dimensions.dart';
-import 'package:vehicle_rental_system/app/theme/app_size.dart';
 import 'package:vehicle_rental_system/core/widgets/app_notification.dart';
 import 'package:vehicle_rental_system/core/widgets/app_text_field.dart';
-import 'package:vehicle_rental_system/core/widgets/brand_chips_shimmer.dart';
 import 'package:vehicle_rental_system/core/widgets/shimmer_card.dart';
 import 'package:vehicle_rental_system/feature/brand/presentation/bloc/brand_bloc.dart';
-
 import 'package:vehicle_rental_system/feature/home/presentation/widgets/animated_greeting.dart';
+import 'package:vehicle_rental_system/feature/home/presentation/widgets/brand_section/brand_section.dart';
 import 'package:vehicle_rental_system/feature/home/presentation/widgets/home_banner_slider.dart';
 import 'package:vehicle_rental_system/feature/home/presentation/widgets/home_loading_skeleton.dart';
 import 'package:vehicle_rental_system/feature/home/presentation/widgets/popular_cars_section.dart';
-
 import 'package:vehicle_rental_system/feature/notification/presentation/bloc/notification_bloc.dart';
-
 import 'package:vehicle_rental_system/feature/brand/domain/entity/brand.dart';
 import 'package:vehicle_rental_system/feature/vehicle/domain/entity/vehicle.dart';
-
 import 'package:vehicle_rental_system/feature/vehicle/presentation/bloc/vehicle_bloc.dart';
 import 'package:vehicle_rental_system/feature/rental/presentation/view/rental_details_screen.dart';
 import 'package:vehicle_rental_system/feature/vehicle/presentation/view/vehicle_detail_screen.dart';
@@ -60,7 +55,7 @@ class _HomeScreenState extends State<HomeScreen>
 
   // Index 0 = All
   // Index 1..n = categories
-  int selectedCategoryIndex = 0;
+  int selectedBrandIndex = 0;
 
   // Becomes true after the first successful vehicle fetch.
   bool _hasLoadedOnce = false;
@@ -70,7 +65,7 @@ class _HomeScreenState extends State<HomeScreen>
   // ============================================================
 
   String _selectedBrandName(List<Brand> brands) {
-    final index = selectedCategoryIndex - 1;
+    final index = selectedBrandIndex - 1;
 
     if (index < 0 || index >= brands.length) {
       return '';
@@ -117,8 +112,8 @@ class _HomeScreenState extends State<HomeScreen>
   // ============================================================
 
   Future<void> refreshData() async {
-    context.read<VehicleBloc>().add(const GetVehicles());
-    context.read<BrandBloc>().add(const GetBrands());
+    context.read<VehicleBloc>().add(const GetVehicles(refresh: true));
+    context.read<BrandBloc>().add(const GetBrands(refresh: true));
   }
 
   // ============================================================
@@ -306,91 +301,16 @@ class _HomeScreenState extends State<HomeScreen>
                           // ==================================================
                           // BRAND CATEGORY
                           // ==================================================
-                          BlocBuilder<BrandBloc, BrandState>(
-                            builder: (context, state) {
-                              final isLoaded = state is BrandsLoaded;
+                          SizedBox(height: 8.h),
 
-                              final brands = isLoaded
-                                  ? state.brands
-                                  : const <Brand>[];
-
-                              // ------------------------------------------------
-                              // BRAND LOADING
-                              // ------------------------------------------------
-
-                              if (!isLoaded) {
-                                return const BrandChipsShimmer();
-                              }
-
-                              // ------------------------------------------------
-                              // BRAND LIST
-                              // ------------------------------------------------
-
-                              return SizedBox(
-                                height: 55.h,
-                                child: ListView.separated(
-                                  scrollDirection: Axis.horizontal,
-
-                                  physics: const BouncingScrollPhysics(),
-
-                                  padding: EdgeInsets.symmetric(
-                                    horizontal: AppDimensions.space12,
-                                  ),
-
-                                  itemCount: brands.length + 1,
-
-                                  separatorBuilder: (_, _) {
-                                    return SizedBox(
-                                      width: AppDimensions.space16,
-                                    );
-                                  },
-
-                                  itemBuilder: (context, index) {
-                                    // ======================================
-                                    // ALL
-                                    // ======================================
-
-                                    if (index == 0) {
-                                      return _CategoryItem(
-                                        title: 'All',
-                                        image: '',
-                                        isSelected: selectedCategoryIndex == 0,
-                                        onTap: () {
-                                          setState(() {
-                                            selectedCategoryIndex = 0;
-                                          });
-
-                                          log('Filter: All');
-                                        },
-                                      );
-                                    }
-
-                                    // ======================================
-                                    // BRAND
-                                    // ======================================
-
-                                    final brand = brands[index - 1];
-
-                                    return _CategoryItem(
-                                      title: brand.name,
-                                      image: brand.imageUrl,
-                                      isSelected:
-                                          selectedCategoryIndex == index,
-                                      onTap: () {
-                                        setState(() {
-                                          selectedCategoryIndex = index;
-                                        });
-
-                                        log('Filter: ${brand.name}');
-                                      },
-                                    );
-                                  },
-                                ),
-                              );
+                          BrandSection(
+                            selectedBrandIndex: selectedBrandIndex,
+                            onBrandSelected: (index) {
+                              setState(() {
+                                selectedBrandIndex = index;
+                              });
                             },
                           ),
-
-                          SizedBox(height: 8.h),
 
                           // ==================================================
                           // POPULAR CARS TITLE
@@ -752,130 +672,6 @@ class _HomeScreenState extends State<HomeScreen>
             ),
           );
         },
-      ),
-    );
-  }
-}
-
-// ====================================================================
-// CATEGORY ITEM
-// ====================================================================
-
-class _CategoryItem extends StatelessWidget {
-  final String title;
-  final String image;
-  final bool isSelected;
-  final VoidCallback onTap;
-
-  const _CategoryItem({
-    required this.title,
-    required this.image,
-    required this.isSelected,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-
-    return Material(
-      color: Colors.transparent,
-
-      child: InkWell(
-        onTap: onTap,
-
-        borderRadius: BorderRadius.circular(AppDimensions.radius16),
-
-        child: AspectRatio(
-          aspectRatio: AppDimensions.aspectRatioSquare,
-
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 250),
-
-            curve: Curves.easeOut,
-
-            width: AppSize.w(context, 20),
-
-            decoration: BoxDecoration(
-              color: isSelected
-                  ? colorScheme.primary.withValues(alpha: 0.0)
-                  : colorScheme.surface,
-
-              borderRadius: BorderRadius.circular(AppDimensions.radius16),
-
-              border: Border.all(
-                color: isSelected
-                    ? colorScheme.primary
-                    : colorScheme.outline.withValues(alpha: 0.15),
-                width: isSelected ? 1.5 : 1,
-              ),
-
-              boxShadow: [
-                if (!isSelected)
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.04),
-                    blurRadius: 8,
-                    offset: const Offset(0, 3),
-                  ),
-              ],
-            ),
-
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(AppDimensions.radius16),
-
-              child: image.isEmpty
-                  // ==================================================
-                  // ALL
-                  // ==================================================
-                  ? Center(
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(
-                            isSelected
-                                ? Icons.check_circle
-                                : Icons.grid_view_rounded,
-                            size: 22.r,
-                            color: isSelected
-                                ? colorScheme.primary
-                                : colorScheme.onSurfaceVariant,
-                          ),
-
-                          SizedBox(height: 4.h),
-
-                          Text(
-                            title,
-                            textAlign: TextAlign.center,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: Theme.of(context).textTheme.labelSmall
-                                ?.copyWith(
-                                  color: isSelected
-                                      ? colorScheme.primary
-                                      : colorScheme.onSurface,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                          ),
-                        ],
-                      ),
-                    )
-                  // ==================================================
-                  // CATEGORY IMAGE
-                  // ==================================================
-                  : Image.network(
-                      image,
-                      fit: BoxFit.contain,
-                      filterQuality: FilterQuality.high,
-                      errorBuilder: (context, error, stackTrace) {
-                        return Icon(
-                          Icons.image_not_supported_outlined,
-                          color: colorScheme.onSurfaceVariant,
-                        );
-                      },
-                    ),
-            ),
-          ),
-        ),
       ),
     );
   }

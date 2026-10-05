@@ -2,7 +2,7 @@ import 'dart:io';
 
 import 'package:fpdart/fpdart.dart';
 import 'package:vehicle_rental_system/core/errors/failure.dart';
-import 'package:vehicle_rental_system/feature/brand/data/model/page_response.dart';
+import 'package:vehicle_rental_system/core/data/page_response.dart';
 import 'package:vehicle_rental_system/feature/vehicle/domain/entity/booked_date.dart';
 import 'package:vehicle_rental_system/feature/vehicle/domain/entity/vehicle.dart';
 import 'package:vehicle_rental_system/feature/vehicle/domain/entity/vehicle_image.dart';

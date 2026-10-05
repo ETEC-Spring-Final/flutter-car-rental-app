@@ -2,7 +2,7 @@ import 'package:dio/dio.dart';
 import 'package:vehicle_rental_system/core/constants/api_constants.dart';
 import 'package:vehicle_rental_system/feature/brand/data/datasource/brand_remote_data_source.dart';
 import 'package:vehicle_rental_system/feature/brand/data/model/brand_model.dart';
-import 'package:vehicle_rental_system/feature/brand/data/model/page_response.dart';
+import 'package:vehicle_rental_system/core/data/page_response.dart';
 
 class BrandRemoteDataSourceImpl implements BrandRemoteDataSource {
   final Dio dio;

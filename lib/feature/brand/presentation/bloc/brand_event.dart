@@ -12,3 +12,7 @@ class GetBrands extends BrandEvent {
 
   const GetBrands({this.refresh = false});
 }
+
+class LoadMoreBrands extends BrandEvent {
+  const LoadMoreBrands();
+}

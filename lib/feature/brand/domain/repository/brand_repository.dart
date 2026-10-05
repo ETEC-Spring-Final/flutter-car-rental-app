@@ -1,6 +1,6 @@
 import 'package:fpdart/fpdart.dart';
 import 'package:vehicle_rental_system/core/errors/failure.dart';
-import 'package:vehicle_rental_system/feature/brand/data/model/page_response.dart';
+import 'package:vehicle_rental_system/core/data/page_response.dart';
 import 'package:vehicle_rental_system/feature/brand/domain/entity/brand.dart';
 
 abstract class BrandRepository {

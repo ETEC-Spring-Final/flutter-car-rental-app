@@ -1,6 +1,6 @@
 import 'dart:io';
 
-import 'package:vehicle_rental_system/feature/brand/data/model/page_response.dart';
+import 'package:vehicle_rental_system/core/data/page_response.dart';
 import 'package:vehicle_rental_system/feature/vehicle/data/model/vehicle_image_model.dart';
 import 'package:vehicle_rental_system/feature/vehicle/data/model/vehicle_model.dart';
 import 'package:vehicle_rental_system/feature/vehicle/domain/entity/booked_date.dart';
