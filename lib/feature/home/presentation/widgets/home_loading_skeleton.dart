@@ -3,8 +3,8 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:shimmer/shimmer.dart';
 
 import 'package:vehicle_rental_system/app/theme/app_dimensions.dart';
-import 'package:vehicle_rental_system/core/widgets/brand_chips_shimmer.dart';
-import 'package:vehicle_rental_system/core/widgets/shimmer_card.dart';
+import 'package:vehicle_rental_system/feature/home/presentation/widgets/brand_section/brand_chips_shimmer.dart';
+import 'package:vehicle_rental_system/feature/home/presentation/widgets/vehicle_section/shimmer_card.dart';
 
 /// Full-page shimmer skeleton shown while the home data (brands + vehicles)
 /// is being fetched. Composes the reusable [BrandChipsShimmer] and
@@ -50,9 +50,7 @@ class HomeLoadingSkeleton extends StatelessWidget {
                 child: Container(
                   decoration: BoxDecoration(
                     color: fill,
-                    borderRadius: BorderRadius.circular(
-                      AppDimensions.radius16,
-                    ),
+                    borderRadius: BorderRadius.circular(AppDimensions.radius16),
                   ),
                 ),
               ),
@@ -73,10 +71,7 @@ class HomeLoadingSkeleton extends StatelessWidget {
                     return SizedBox(width: 14.w);
                   },
                   itemBuilder: (context, index) {
-                    return const ShimmerCard(
-                      width: 280,
-                      filled: true,
-                    );
+                    return const ShimmerCard(width: 280, filled: true);
                   },
                 ),
               ),

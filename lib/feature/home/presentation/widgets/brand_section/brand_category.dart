@@ -9,15 +9,15 @@ import 'package:vehicle_rental_system/feature/home/presentation/widgets/brand_se
 
 class BrandCategory extends StatefulWidget {
   final List<Brand> brands;
-  final int selectedBrandIndex;
-  final ValueChanged<int> onBrandSelected;
+  final int? selectedBrandId;
+  final ValueChanged<Brand?> onBrandSelected;
   final bool isLoadMore;
   final VoidCallback onLoadMore;
 
   const BrandCategory({
     super.key,
     required this.brands,
-    required this.selectedBrandIndex,
+    required this.selectedBrandId,
     required this.onBrandSelected,
     required this.isLoadMore,
     required this.onLoadMore,
@@ -56,15 +56,15 @@ class _BrandCategoryState extends State<BrandCategory> {
 
   @override
   Widget build(BuildContext context) {
+    final itemCount = widget.brands.length + 1 + (widget.isLoadMore ? 1 : 0);
     return SizedBox(
       height: 55.h,
-
       child: ListView.separated(
         controller: _scrollController,
         scrollDirection: Axis.horizontal,
         physics: const BouncingScrollPhysics(),
         padding: EdgeInsets.symmetric(horizontal: AppDimensions.space12),
-        itemCount: widget.brands.length + 2,
+        itemCount: itemCount,
         separatorBuilder: (_, __) {
           return SizedBox(width: AppDimensions.space16);
         },
@@ -77,9 +77,9 @@ class _BrandCategoryState extends State<BrandCategory> {
             return BrandCategoryItem(
               title: 'All',
               image: '',
-              isSelected: widget.selectedBrandIndex == 0,
+              isSelected: widget.selectedBrandId == null,
               onTap: () {
-                widget.onBrandSelected(0);
+                widget.onBrandSelected(null);
 
                 log('Filter: All');
               },
@@ -102,11 +102,14 @@ class _BrandCategoryState extends State<BrandCategory> {
           return BrandCategoryItem(
             title: brand.name,
             image: brand.imageUrl,
-            isSelected: widget.selectedBrandIndex == index,
+            isSelected: widget.selectedBrandId == brand.id,
             onTap: () {
-              widget.onBrandSelected(index);
+              widget.onBrandSelected(brand);
 
-              log('Filter: ${brand.name}');
+              log(
+                'Filter: ${brand.name}'
+                '(id: ${brand.id})',
+              );
             },
           );
         },
@@ -114,92 +117,3 @@ class _BrandCategoryState extends State<BrandCategory> {
     );
   }
 }
-
-/*
-class BrandCategory extends StatelessWidget {
-  final int selectedBrandIndex;
-  final ValueChanged<int> onBrandSelected;
-  const BrandCategory({
-    super.key,
-    required this.selectedBrandIndex,
-    required this.onBrandSelected,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return BlocBuilder<BrandBloc, BrandState>(
-      builder: (context, state) {
-        final isLoaded = state is BrandsLoaded;
-
-        final brands = isLoaded ? state.brands : const <Brand>[];
-
-        // ------------------------------------------------
-        // BRAND LOADING
-        // ------------------------------------------------
-
-        if (!isLoaded) {
-          return const BrandChipsShimmer();
-        }
-
-        // ------------------------------------------------
-        // BRAND LIST
-        // ------------------------------------------------
-
-        return SizedBox(
-          height: 55.h,
-          child: ListView.separated(
-            scrollDirection: Axis.horizontal,
-
-            physics: const BouncingScrollPhysics(),
-
-            padding: EdgeInsets.symmetric(horizontal: AppDimensions.space12),
-
-            itemCount: brands.length + 1,
-
-            separatorBuilder: (_, _) {
-              return SizedBox(width: AppDimensions.space16);
-            },
-
-            itemBuilder: (context, index) {
-              // ======================================
-              // ALL
-              // ======================================
-
-              if (index == 0) {
-                return BrandCategoryItem(
-                  title: 'All',
-                  image: '',
-                  isSelected: selectedBrandIndex == 0,
-                  onTap: () {
-                    onBrandSelected(0);
-
-                    log('Filter: All');
-                  },
-                );
-              }
-
-              // ======================================
-              // BRAND
-              // ======================================
-
-              final brand = brands[index - 1];
-
-              return BrandCategoryItem(
-                title: brand.name,
-                image: brand.imageUrl,
-                isSelected: selectedBrandIndex == index,
-                onTap: () {
-                  onBrandSelected(index);
-
-                  log('Filter: ${brand.name}');
-                },
-              );
-            },
-          ),
-        );
-      },
-    );
-  }
-}
-
-*/

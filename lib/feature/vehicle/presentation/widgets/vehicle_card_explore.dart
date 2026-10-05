@@ -6,7 +6,6 @@ import 'package:vehicle_rental_system/app/theme/app_dimensions.dart';
 import 'package:vehicle_rental_system/core/widgets/app_badge.dart';
 import 'package:vehicle_rental_system/feature/vehicle/domain/entity/vehicle.dart';
 import 'package:vehicle_rental_system/core/widgets/favorite_toggle.dart';
-import 'package:vehicle_rental_system/feature/vehicle/presentation/service/map_service.dart';
 import 'package:vehicle_rental_system/feature/vehicle/presentation/widgets/spec_item.dart';
 
 class VehicleCardExplore extends StatelessWidget {

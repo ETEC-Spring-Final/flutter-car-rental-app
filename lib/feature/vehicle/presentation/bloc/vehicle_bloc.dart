@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:bloc/bloc.dart';
 import 'package:equatable/equatable.dart';
+
 import 'package:vehicle_rental_system/feature/brand/domain/entity/brand.dart';
 import 'package:vehicle_rental_system/feature/vehicle/domain/entity/vehicle.dart';
 import 'package:vehicle_rental_system/feature/vehicle/domain/entity/vehicle_image.dart';
@@ -16,15 +17,21 @@ class VehicleBloc extends Bloc<VehicleEvent, VehicleState> {
   List<Vehicle> _vehicles = const [];
   List<Brand> _brands = const [];
 
-  // Tracks whether the first vehicle request has completed.
   bool _vehiclesLoaded = false;
 
-  // Pagination
+  // ============================================================
+  // PAGINATION
+  // ============================================================
+
   static const int _pageSize = 10;
+
   int _currentPage = 0;
   bool _hasReachedMax = false;
 
-  // Current Explore filters
+  // ============================================================
+  // FILTERS
+  // ============================================================
+
   int? _brandId;
   String? _type;
   String? _transmission;
@@ -32,6 +39,10 @@ class VehicleBloc extends Bloc<VehicleEvent, VehicleState> {
   double? _minPrice;
   double? _maxPrice;
   int? _seats;
+
+  // ============================================================
+  // CONSTRUCTOR
+  // ============================================================
 
   VehicleBloc(this.repository) : super(VehicleInitial()) {
     on<GetVehicles>(_onGetVehicles);
@@ -49,119 +60,148 @@ class VehicleBloc extends Bloc<VehicleEvent, VehicleState> {
     GetVehicles event,
     Emitter<VehicleState> emit,
   ) async {
-    // ------------------------------------------------------------
-    // REFRESH / FIRST LOAD
-    // ------------------------------------------------------------
-
     if (event.refresh || state is VehicleInitial) {
-      _currentPage = 0;
-      _hasReachedMax = false;
-
-      // Save the filters from the event.
-      _brandId = event.brandId;
-      _type = event.type;
-      _transmission = event.transmission;
-      _fuelType = event.fuelType;
-      _minPrice = event.minPrice;
-      _maxPrice = event.maxPrice;
-      _seats = event.seats;
-
-      emit(VehicleLoading());
-
-      final result = await repository.getVehicles(
-        page: _currentPage,
-        size: _pageSize,
-        brandId: _brandId,
-        type: _type,
-        transmission: _transmission,
-        fuelType: _fuelType,
-        minPrice: _minPrice,
-        maxPrice: _maxPrice,
-        seats: _seats,
-      );
-
-      result.fold(
-        (failure) {
-          _vehiclesLoaded = true;
-          emit(VehicleError(failure.message));
-        },
-        (response) {
-          _vehicles = response.content;
-          _currentPage = response.page;
-          _hasReachedMax = response.last;
-          _vehiclesLoaded = true;
-
-          emit(
-            VehicleLoaded(
-              _vehicles,
-              currentPage: _currentPage,
-              totalPages: response.totalPages,
-              hasReachedMax: _hasReachedMax,
-              isLoadingMore: false,
-            ),
-          );
-        },
-      );
-
+      await _loadInitialVehicles(event, emit);
       return;
     }
 
-    // ------------------------------------------------------------
-    // LOAD NEXT PAGE
-    // ------------------------------------------------------------
+    await _loadMoreVehicles(emit);
+  }
 
-    if (state is VehicleLoaded) {
-      final currentState = state as VehicleLoaded;
+  // ============================================================
+  // LOAD INITIAL VEHICLES
+  // ============================================================
 
-      // Don't request another page if one is already loading.
-      if (currentState.isLoadingMore) {
-        return;
-      }
+  Future<void> _loadInitialVehicles(
+    GetVehicles event,
+    Emitter<VehicleState> emit,
+  ) async {
+    // Reset pagination
+    _currentPage = 0;
+    _hasReachedMax = false;
 
-      // Don't request another page when we reached the last page.
-      if (_hasReachedMax) {
-        return;
-      }
+    // Save filters
+    _brandId = event.brandId;
+    _type = event.type;
+    _transmission = event.transmission;
+    _fuelType = event.fuelType;
+    _minPrice = event.minPrice;
+    _maxPrice = event.maxPrice;
+    _seats = event.seats;
 
-      emit(currentState.copyWith(isLoadingMore: true));
+    // Loading state
+    emit(VehicleLoading());
 
-      final nextPage = _currentPage + 1;
+    // API request
+    final result = await repository.getVehicles(
+      page: _currentPage,
+      size: _pageSize,
+      brandId: _brandId,
+      type: _type,
+      transmission: _transmission,
+      fuelType: _fuelType,
+      minPrice: _minPrice,
+      maxPrice: _maxPrice,
+      seats: _seats,
+    );
 
-      final result = await repository.getVehicles(
-        page: nextPage,
-        size: _pageSize,
-        brandId: _brandId,
-        type: _type,
-        transmission: _transmission,
-        fuelType: _fuelType,
-        minPrice: _minPrice,
-        maxPrice: _maxPrice,
-        seats: _seats,
-      );
+    result.fold(
+      (failure) {
+        _vehiclesLoaded = true;
 
-      result.fold(
-        (failure) {
-          emit(currentState.copyWith(isLoadingMore: false));
-        },
-        (response) {
-          // Add the next page to the existing vehicles.
-          _vehicles = [..._vehicles, ...response.content];
+        emit(VehicleError(failure.message));
+      },
+      (response) {
+        // Replace existing vehicles
+        _vehicles = response.content;
 
-          _currentPage = response.page;
-          _hasReachedMax = response.last;
+        // Update pagination
+        _currentPage = response.page;
+        _hasReachedMax = response.last;
 
-          emit(
-            VehicleLoaded(
-              _vehicles,
-              currentPage: _currentPage,
-              totalPages: response.totalPages,
-              hasReachedMax: _hasReachedMax,
-              isLoadingMore: false,
-            ),
-          );
-        },
-      );
+        _vehiclesLoaded = true;
+
+        emit(
+          VehicleLoaded(
+            _vehicles,
+            currentPage: _currentPage,
+            totalPages: response.totalPages,
+            hasReachedMax: _hasReachedMax,
+            isLoadingMore: false,
+          ),
+        );
+      },
+    );
+  }
+
+  // ============================================================
+  // LOAD MORE VEHICLES
+  // ============================================================
+
+  Future<void> _loadMoreVehicles(Emitter<VehicleState> emit) async {
+    // Make sure vehicles are already loaded
+    if (state is! VehicleLoaded) {
+      return;
     }
+
+    final currentState = state as VehicleLoaded;
+
+    // Prevent duplicate request
+    if (currentState.isLoadingMore) {
+      return;
+    }
+
+    // No more pages
+    if (_hasReachedMax) {
+      return;
+    }
+
+    // Show loading-more state
+    emit(currentState.copyWith(isLoadingMore: true));
+
+    // Calculate next page
+    final nextPage = _currentPage + 1;
+
+    // API request
+    final result = await repository.getVehicles(
+      page: nextPage,
+      size: _pageSize,
+      brandId: _brandId,
+      type: _type,
+      transmission: _transmission,
+      fuelType: _fuelType,
+      minPrice: _minPrice,
+      maxPrice: _maxPrice,
+      seats: _seats,
+    );
+
+    result.fold(
+      (failure) {
+        // Keep current vehicles
+        // Just stop the loading indicator
+
+        emit(currentState.copyWith(isLoadingMore: false));
+      },
+      (response) {
+        // Append new vehicles
+        _vehicles = [..._vehicles, ...response.content];
+
+        // Update pagination
+        _currentPage = response.page;
+        _hasReachedMax = response.last;
+
+        // Emit updated state
+        emit(
+          VehicleLoaded(
+            _vehicles,
+            currentPage: _currentPage,
+            totalPages: response.totalPages,
+            hasReachedMax: _hasReachedMax,
+            isLoadingMore: false,
+          ),
+        );
+      },
+    );
   }
 
   // ============================================================
@@ -176,19 +216,24 @@ class VehicleBloc extends Bloc<VehicleEvent, VehicleState> {
 
     final result = await repository.getVehicleById(event.id);
 
-    result.fold((failure) => emit(VehicleError(failure.message)), (vehicle) {
-      _vehicles = [vehicle];
+    result.fold(
+      (failure) {
+        emit(VehicleError(failure.message));
+      },
+      (vehicle) {
+        _vehicles = [vehicle];
 
-      emit(
-        VehicleLoaded(
-          _vehicles,
-          currentPage: 0,
-          totalPages: 1,
-          hasReachedMax: true,
-          isLoadingMore: false,
-        ),
-      );
-    });
+        emit(
+          VehicleLoaded(
+            _vehicles,
+            currentPage: 0,
+            totalPages: 1,
+            hasReachedMax: true,
+            isLoadingMore: false,
+          ),
+        );
+      },
+    );
   }
 
   // ============================================================
@@ -370,8 +415,12 @@ class VehicleBloc extends Bloc<VehicleEvent, VehicleState> {
     final result = await repository.deleteVehicle(event.id);
 
     result.fold(
-      (failure) => emit(VehicleError(failure.message)),
-      (_) => emit(const VehicleSuccess('Vehicle deleted successfully.')),
+      (failure) {
+        emit(VehicleError(failure.message));
+      },
+      (_) {
+        emit(const VehicleSuccess('Vehicle deleted successfully.'));
+      },
     );
   }
 }

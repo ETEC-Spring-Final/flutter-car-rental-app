@@ -7,7 +7,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 import 'package:vehicle_rental_system/app/theme/app_dimensions.dart';
 import 'package:vehicle_rental_system/core/widgets/app_text_field.dart';
-import 'package:vehicle_rental_system/core/widgets/shimmer_card.dart';
+import 'package:vehicle_rental_system/feature/home/presentation/widgets/vehicle_section/shimmer_card.dart';
 import 'package:vehicle_rental_system/feature/vehicle/domain/entity/vehicle.dart';
 import 'package:vehicle_rental_system/feature/vehicle/presentation/bloc/vehicle_bloc.dart';
 import 'package:vehicle_rental_system/feature/vehicle/presentation/view/vehicle_detail_screen.dart';
