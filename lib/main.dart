@@ -1,7 +1,12 @@
+import 'dart:developer';
+
+import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:vehicle_rental_system/app/app.dart';
 import 'package:vehicle_rental_system/app/locale/bloc/locale_bloc.dart';
 import 'package:vehicle_rental_system/app/theme/bloc/theme_bloc.dart';
+import 'package:vehicle_rental_system/core/service/firebase/notification_service.dart';
 import 'package:vehicle_rental_system/feature/auth/presentation/bloc/auth_bloc.dart';
 import 'package:vehicle_rental_system/feature/booking/presentation/bloc/booking_bloc.dart';
 import 'package:vehicle_rental_system/feature/brand/presentation/bloc/brand_bloc.dart';
@@ -16,8 +21,20 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await Firebase.initializeApp();
+
+  final messaging = FirebaseMessaging.instance;
+
+  await NotificationService.instance.initialize();
+
+  await messaging.requestPermission(alert: true, badge: true, sound: true);
+
+  final token = await messaging.getToken();
+
+  log('FCM Token: $token');
 
   await configureDependencies();
+
   runApp(
     MultiBlocProvider(
       providers: [

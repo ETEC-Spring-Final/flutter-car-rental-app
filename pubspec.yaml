@@ -66,6 +66,9 @@ dependencies:
   flutter_web_auth_2: ^5.1.0
   shimmer: ^3.0.0
   flutter_launcher_icons: ^0.14.4 # icon image
+  firebase_core: ^4.15.0
+  firebase_messaging: ^16.7.0
+  flutter_local_notifications: ^22.3.1
 
 dev_dependencies:
   flutter_test:
