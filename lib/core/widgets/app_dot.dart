@@ -1,3 +1,5 @@
+import 'package:flutter/material.dart';
+
 class AppDot extends StatelessWidget {
   const AppDot();
 
