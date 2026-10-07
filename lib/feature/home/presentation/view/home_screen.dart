@@ -72,52 +72,6 @@ class _HomeScreenState extends State<HomeScreen>
   bool _hasLoadedOnce = false;
 
   // ============================================================
-  // FILTER VEHICLES BY BRAND ID
-  // ============================================================
-
-  List<Vehicle> _filteredVehicles(
-    int? selectedBrandId,
-    List<Vehicle> vehicles,
-  ) {
-    // ------------------------------------------------------------
-    // ALL BRANDS
-    // ------------------------------------------------------------
-
-    if (selectedBrandId == null) {
-      return vehicles;
-    }
-
-    // ------------------------------------------------------------
-    // SELECTED BRAND
-    // ------------------------------------------------------------
-
-    return vehicles
-        .where((vehicle) => vehicle.brandId == selectedBrandId)
-        .toList();
-  }
-
-  // ============================================================
-  // GET SELECTED BRAND NAME
-  //
-  // Used when showing EmptyVehiclesWidget.
-  // ============================================================
-
-  String _selectedBrandName(List<Brand> brands) {
-    // "All" selected
-    if (selectedBrandId == null) {
-      return '';
-    }
-
-    for (final brand in brands) {
-      if (brand.id == selectedBrandId) {
-        return brand.name;
-      }
-    }
-
-    return '';
-  }
-
-  // ============================================================
   // BRAND SELECTION
   // ============================================================
 
@@ -446,7 +400,7 @@ class _HomeScreenState extends State<HomeScreen>
                             ],
                           ),
 
-                          SizedBox(height: 12.h),
+                          //SizedBox(height: 12.h),
 
                           // ======================================
                           // RECOMMENDED CARS

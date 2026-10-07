@@ -378,25 +378,3 @@ class VehicleCardExplore extends StatelessWidget {
     );
   }
 }
-
-// ============================================================================
-// DOT
-// ============================================================================
-
-class _Dot extends StatelessWidget {
-  const _Dot();
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 8),
-      child: Text(
-        '•',
-        style: TextStyle(
-          color: Theme.of(context).colorScheme.onSurfaceVariant,
-          fontSize: 16,
-        ),
-      ),
-    );
-  }
-}
