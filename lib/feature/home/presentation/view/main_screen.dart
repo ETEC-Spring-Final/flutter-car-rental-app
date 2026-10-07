@@ -41,6 +41,17 @@ class _MainScreenState extends State<MainScreen> {
     currentIndex = widget.index;
   }
 
+  @override
+  void didUpdateWidget(covariant MainScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+
+    if (widget.index != oldWidget.index) {
+      setState(() {
+        currentIndex = widget.index;
+      });
+    }
+  }
+
   // ===========================================================================
   // CHANGE TAB
   // ===========================================================================

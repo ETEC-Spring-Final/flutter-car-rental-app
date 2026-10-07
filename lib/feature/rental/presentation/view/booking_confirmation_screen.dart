@@ -142,7 +142,10 @@ class _BookingConfirmationScreenState extends State<BookingConfirmationScreen> {
     // (Home / Booking / Profile...) stays available.
     context.read<BookingBloc>().add(const LoadBookingsEvent(refresh: true));
     widget.onBookingTap?.call();
-    context.go(AppRoutes.home, extra: 2);
+
+    final router = GoRouter.of(context);
+    Navigator.of(context).popUntil((route) => route.isFirst);
+    router.go(AppRoutes.home, extra: 2);
   }
 
   // ---------------------------------------------------------------------------
@@ -182,7 +185,7 @@ class _BookingConfirmationScreenState extends State<BookingConfirmationScreen> {
                     title: _isPaid ? 'Booking Confirmed' : 'Booking Placed',
                     message: _isPaid
                         ? 'Your reservation has been placed successfully. '
-                            'A confirmation has been sent to your registered contact.'
+                              'A confirmation has been sent to your registered contact.'
                         : 'We received your booking. Complete the QR payment to confirm it.',
                     icon: _isPaid
                         ? Icons.verified_rounded
@@ -221,9 +224,7 @@ class _BookingConfirmationScreenState extends State<BookingConfirmationScreen> {
         ),
         bottomNavigationBar: AppBookingBottomBar(
           label: _isPaid ? 'View My Bookings' : 'Pay Now',
-          icon: _isPaid
-              ? Icons.receipt_long_rounded
-              : Icons.qr_code_2_rounded,
+          icon: _isPaid ? Icons.receipt_long_rounded : Icons.qr_code_2_rounded,
           onPressed: _isPaid
               ? () => _viewBookings(context)
               : () => _openQr(_createdBooking),

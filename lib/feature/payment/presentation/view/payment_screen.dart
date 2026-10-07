@@ -4,14 +4,17 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-import 'package:go_router/go_router.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import 'package:vehicle_rental_system/core/constants/app_constants.dart';
 import 'package:vehicle_rental_system/core/widgets/app_back_button.dart';
 import 'package:vehicle_rental_system/feature/booking/domain/entity/booking.dart';
+import 'package:vehicle_rental_system/feature/booking/domain/entity/new_booking_request.dart';
+import 'package:vehicle_rental_system/feature/booking/presentation/bloc/booking_bloc.dart';
 import 'package:vehicle_rental_system/feature/rental/presentation/bloc/rental_bloc.dart';
 import 'package:vehicle_rental_system/feature/rental/presentation/bloc/rental_event.dart';
 import 'package:vehicle_rental_system/feature/rental/presentation/bloc/rental_state.dart';
+import 'package:vehicle_rental_system/feature/rental/presentation/view/booking_confirmation_screen.dart';
+import 'package:vehicle_rental_system/feature/vehicle/domain/entity/vehicle.dart';
 import 'package:vehicle_rental_system/feature/vehicle/presentation/bloc/vehicle_bloc.dart';
 
 import '../bloc/payment_bloc.dart';
@@ -20,8 +23,36 @@ import '../bloc/payment_state.dart';
 
 class PaymentScreen extends StatefulWidget {
   final Booking booking;
+  final NewBookingRequest? bookingRequest;
 
-  const PaymentScreen({super.key, required this.booking});
+  final Vehicle vehicle;
+  final int rentalDays;
+
+  final DateTime pickupDate;
+  final DateTime returnDate;
+
+  final String pickupLocation;
+  final String returnLocation;
+
+  final Map<String, bool> selectedServices;
+
+  final String paymentMethod;
+  final double totalPrice;
+
+  const PaymentScreen({
+    super.key,
+    required this.booking,
+    this.bookingRequest,
+    required this.vehicle,
+    required this.rentalDays,
+    required this.pickupDate,
+    required this.returnDate,
+    required this.pickupLocation,
+    required this.returnLocation,
+    required this.selectedServices,
+    required this.paymentMethod,
+    required this.totalPrice,
+  });
 
   @override
   State<PaymentScreen> createState() => _PaymentScreenState();
@@ -40,6 +71,8 @@ class _PaymentScreenState extends State<PaymentScreen> {
   bool _paymentSuccess = false;
 
   bool _manualCheckRequested = false;
+
+  bool _isCreatingBooking = false;
 
   @override
   void initState() {
@@ -109,100 +142,163 @@ class _PaymentScreenState extends State<PaymentScreen> {
     super.dispose();
   }
 
+  void _openConfirmation(Booking booking) {
+    Navigator.of(context).pushReplacement(
+      MaterialPageRoute(
+        builder: (_) => BookingConfirmationScreen(
+          createdBooking: booking,
+          initialPaid: true,
+          vehicle: widget.vehicle,
+          rentalDays: widget.rentalDays,
+          pickupDate: widget.pickupDate,
+          returnDate: widget.returnDate,
+          pickupLocation: widget.pickupLocation,
+          returnLocation: widget.returnLocation,
+          selectedServices: widget.selectedServices,
+          paymentMethod: widget.paymentMethod,
+          totalPrice: widget.totalPrice,
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
-    return Scaffold(
-      appBar: AppBar(
-        leading: AppBackButton(),
-        title: const Text('Payment'),
-        centerTitle: true,
-      ),
-      body: BlocConsumer<PaymentBloc, PaymentState>(
-        listener: (context, state) {
-          if (state is QrCreated) {
-            setState(() {
-              _qr = state.response.qr;
-              _md5 = state.response.md5;
-            });
+    return MultiBlocListener(
+      listeners: [
+        BlocListener<PaymentBloc, PaymentState>(
+          listener: (context, state) {
+            if (state is QrCreated) {
+              setState(() {
+                _qr = state.response.qr;
+                _md5 = state.response.md5;
+              });
 
-            // Auto-detect when the user completes the scan.
-            _startAutoCheck();
-          }
+              _startAutoCheck();
+            }
 
-          if (state is PaymentSuccess) {
-            setState(() {
-              _paymentSuccess = true;
-            });
+            if (state is PaymentSuccess) {
+              final request = widget.bookingRequest;
 
-            _timer?.cancel();
-            _checkTimer?.cancel();
+              setState(() {
+                _paymentSuccess = true;
+                _isCreatingBooking = request != null;
+              });
 
-            ScaffoldMessenger.of(
-              context,
-            ).showSnackBar(const SnackBar(content: Text('Payment successful')));
+              _timer?.cancel();
+              _checkTimer?.cancel();
 
-            // Auto-navigate back to the booking confirmation screen and
-            // mark the booking as paid.
-            WidgetsBinding.instance.addPostFrameCallback((_) {
-              if (mounted) context.pop(true);
-            });
-          }
+              _manualCheckRequested = false;
 
-          if (state is PaymentSuccess) {
-            _manualCheckRequested = false;
-          }
+              if (request == null) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Payment successful')),
+                );
 
-          if (state is PaymentFailure) {
-            // Polling failures are expected while the user hasn't completed
-            // the scan yet, so stay silent unless the user tapped the button.
-            if (_manualCheckRequested) {
+                WidgetsBinding.instance.addPostFrameCallback((_) {
+                  if (mounted) Navigator.of(context).pop(true);
+                });
+
+                return;
+              }
+
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Payment successful. Creating booking...'),
+                ),
+              );
+
+              // IMPORTANT:
+              // Create the real booking ONLY after payment succeeds.
+              context.read<BookingBloc>().add(CreateBookingEvent(request));
+            }
+
+            if (state is PaymentFailure) {
+              if (_manualCheckRequested) {
+                ScaffoldMessenger.of(
+                  context,
+                ).showSnackBar(SnackBar(content: Text(state.message)));
+              }
+
+              _manualCheckRequested = false;
+            }
+          },
+        ),
+
+        BlocListener<BookingBloc, BookingState>(
+          listener: (context, state) {
+            if (state is BookingCreated) {
+              setState(() {
+                _isCreatingBooking = false;
+              });
+
+              // Payment screen is replaced by confirmation screen.
+              _openConfirmation(state.booking);
+            }
+
+            if (state is BookingError) {
+              setState(() {
+                _isCreatingBooking = false;
+              });
+
               ScaffoldMessenger.of(
                 context,
-              ).showSnackBar(SnackBar(content: Text(state.message)));
+              ).showSnackBar(SnackBar(content: Text(state.failure.message)));
             }
-            _manualCheckRequested = false;
-          }
-        },
-        builder: (context, state) {
-          if (state is PaymentLoading) {
-            return const Center(child: CircularProgressIndicator());
-          }
+          },
+        ),
+      ],
 
-          return SingleChildScrollView(
-            padding: EdgeInsets.all(20.w),
-            child: Column(
-              children: [
-                _buildHeader(theme),
+      child: Scaffold(
+        appBar: AppBar(
+          leading: AppBackButton(),
+          title: const Text('Payment'),
+          centerTitle: true,
+        ),
 
-                SizedBox(height: 20.h),
+        body: BlocBuilder<PaymentBloc, PaymentState>(
+          builder: (context, state) {
+            if (state is PaymentLoading) {
+              return const Center(child: CircularProgressIndicator());
+            }
 
-                _buildAmount(theme),
+            return SingleChildScrollView(
+              padding: EdgeInsets.all(20.w),
+              child: Column(
+                children: [
+                  _buildHeader(theme),
 
-                SizedBox(height: 20.h),
+                  SizedBox(height: 20.h),
 
-                _buildQrCard(theme),
+                  _buildAmount(theme),
 
-                SizedBox(height: 20.h),
+                  SizedBox(height: 20.h),
 
-                _buildDetails(theme),
+                  _buildQrCard(theme),
 
-                SizedBox(height: 20.h),
+                  SizedBox(height: 20.h),
 
-                _buildInstructions(theme),
+                  _buildDetails(theme),
 
-                SizedBox(height: 20.h),
+                  SizedBox(height: 20.h),
 
-                if (_md5 != null) _buildPaymentId(theme),
+                  _buildInstructions(theme),
 
-                SizedBox(height: 100.h),
-              ],
-            ),
-          );
-        },
+                  SizedBox(height: 20.h),
+
+                  if (_md5 != null) _buildPaymentId(theme),
+
+                  SizedBox(height: 100.h),
+                ],
+              ),
+            );
+          },
+        ),
+
+        bottomNavigationBar: _buildBottomButton(theme),
       ),
-      bottomNavigationBar: _buildBottomButton(theme),
     );
   }
 
@@ -675,10 +771,31 @@ class _PaymentScreenState extends State<PaymentScreen> {
       child: SizedBox(
         height: 52.h,
         child: ElevatedButton(
-          onPressed: _md5 == null || _paymentSuccess || _remainingSeconds <= 0
+          onPressed:
+              _md5 == null ||
+                  _paymentSuccess ||
+                  _isCreatingBooking ||
+                  _remainingSeconds <= 0
               ? null
               : () => _checkPayment(auto: false),
-          child: _paymentSuccess
+
+          child: _isCreatingBooking
+              ? const Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Colors.white,
+                      ),
+                    ),
+                    SizedBox(width: 10),
+                    Text('Creating Booking...'),
+                  ],
+                )
+              : _paymentSuccess
               ? const Text('Payment Completed')
               : const Text('Check Payment'),
         ),

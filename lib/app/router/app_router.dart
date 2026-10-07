@@ -272,7 +272,6 @@ class AppRouter {
       // ============================================================
       GoRoute(
         path: AppRoutes.payment,
-        name: RouterNames.payment,
         builder: (context, state) {
           final booking = state.extra is Booking
               ? state.extra as Booking
@@ -284,7 +283,19 @@ class AppRouter {
             );
           }
 
-          return PaymentScreen(booking: booking);
+          return PaymentScreen(
+            booking: booking,
+            bookingRequest: null,
+            vehicle: booking.vehicle,
+            rentalDays: booking.totalDays,
+            pickupDate: booking.startDate,
+            returnDate: booking.endDate,
+            pickupLocation: booking.pickupLocation,
+            returnLocation: booking.returnLocation,
+            selectedServices: const {},
+            paymentMethod: 'KHQR',
+            totalPrice: booking.totalPrice,
+          );
         },
       ),
 

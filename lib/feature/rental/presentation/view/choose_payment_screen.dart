@@ -1,18 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-import 'package:go_router/go_router.dart';
-
-import 'package:vehicle_rental_system/app/router/app_routes.dart';
 import 'package:vehicle_rental_system/app/theme/app_colors.dart';
-import 'package:vehicle_rental_system/app/theme/app_dimensions.dart';
-import 'package:vehicle_rental_system/core/widgets/app_back_button.dart';
-import 'package:vehicle_rental_system/core/widgets/app_booking_bottom_bar.dart';
 import 'package:vehicle_rental_system/feature/booking/domain/entity/booking.dart';
 import 'package:vehicle_rental_system/feature/booking/domain/entity/new_booking_request.dart';
 import 'package:vehicle_rental_system/feature/booking/presentation/bloc/booking_bloc.dart';
-import 'package:vehicle_rental_system/feature/vehicle/domain/entity/vehicle.dart';
+import 'package:vehicle_rental_system/feature/payment/presentation/view/payment_screen.dart';
 import 'package:vehicle_rental_system/feature/rental/presentation/view/booking_confirmation_screen.dart';
+import 'package:vehicle_rental_system/feature/vehicle/domain/entity/vehicle.dart';
 
 class ChoosePaymentScreen extends StatefulWidget {
   final Vehicle vehicle;
@@ -29,6 +24,7 @@ class ChoosePaymentScreen extends StatefulWidget {
   final DateTime returnDate;
   final TimeOfDay? pickupTime;
   final TimeOfDay? returnTime;
+
   final int pickUpLocationId;
   final int returnLocationId;
   final String pickupLocation;
@@ -58,32 +54,32 @@ class ChoosePaymentScreen extends StatefulWidget {
 }
 
 class _ChoosePaymentScreenState extends State<ChoosePaymentScreen> {
-  String selectedPayment = 'KHQR';
-
-  bool _isCreating = false;
+  String _selectedPaymentMethod = 'khqr';
+  bool _isCreatingBooking = false;
 
   DateTime _combine(DateTime date, TimeOfDay? time) {
     if (time == null) return date;
     return DateTime(date.year, date.month, date.day, time.hour, time.minute);
   }
 
-  Future<void> _payNow() async {
-    if (_isCreating) return;
-    setState(() => _isCreating = true);
+  NewBookingRequest _buildBookingRequest() {
+    return NewBookingRequest(
+      vehicleId: widget.vehicle.id,
+      pickUpLocationId: widget.pickUpLocationId,
+      returnLocationId: widget.returnLocationId,
+      pickUpDateTime: _combine(widget.pickupDate, widget.pickupTime),
+      returnDateTime: _combine(widget.returnDate, widget.returnTime),
+      serviceIds: widget.selectedServiceIds,
+    );
+  }
 
-    final startDate = _combine(widget.pickupDate, widget.pickupTime);
-    final endDate = _combine(widget.returnDate, widget.returnTime);
-
-    // Stage the rental so the QR payment screen can show what will be paid.
-    // The real booking is created on the backend only AFTER the payment has
-    // been scanned successfully, so an unpaid/aborted payment never produces
-    // a booking -> the vehicle cannot be rented.
-    final provisional = Booking(
+  Booking _buildProvisionalBooking() {
+    return Booking(
       id: widget.vehicle.id,
       bookingNumber: 'BOOK-${DateTime.now().millisecondsSinceEpoch}',
       vehicle: widget.vehicle,
-      startDate: startDate,
-      endDate: endDate,
+      startDate: _combine(widget.pickupDate, widget.pickupTime),
+      endDate: _combine(widget.returnDate, widget.returnTime),
       totalDays: widget.rentalDays,
       pricePerDay: widget.vehicle.pricePerDay,
       totalPrice: widget.totalPrice,
@@ -91,34 +87,72 @@ class _ChoosePaymentScreenState extends State<ChoosePaymentScreen> {
       returnLocation: widget.returnLocation,
       status: 'PENDING',
     );
+  }
 
-    final paid = await context.push<bool>(
-      AppRoutes.payment,
-      extra: provisional,
-    );
+  void _continuePayment() {
+    if (_isCreatingBooking) return;
 
-    if (!mounted) return;
-
-    if (paid != true) {
-      // Payment was not completed -> keep the booking uncreated.
-      setState(() => _isCreating = false);
-      return;
+    if (_selectedPaymentMethod == 'khqr') {
+      _openQrPayment();
+    } else {
+      _showCashPaymentDialog();
     }
+  }
 
-    // The QR was scanned successfully. Only now create the real booking; the
-    // confirmation screen is shown once the reservation actually exists, so a
-    // booking can never be created without a successful payment.
-    context.read<BookingBloc>().add(
-      CreateBookingEvent(
-        NewBookingRequest(
-          vehicleId: widget.vehicle.id,
-          pickUpLocationId: widget.pickUpLocationId,
-          returnLocationId: widget.returnLocationId,
-          pickUpDateTime: startDate,
-          returnDateTime: endDate,
-          serviceIds: widget.selectedServiceIds,
+  void _openQrPayment() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => PaymentScreen(
+          booking: _buildProvisionalBooking(),
+          bookingRequest: _buildBookingRequest(),
+          vehicle: widget.vehicle,
+          rentalDays: widget.rentalDays,
+          pickupDate: widget.pickupDate,
+          returnDate: widget.returnDate,
+          pickupLocation: widget.pickupLocation,
+          returnLocation: widget.returnLocation,
+          selectedServices: widget.selectedServices,
+          paymentMethod: 'KHQR',
+          totalPrice: widget.totalPrice,
         ),
       ),
+    );
+  }
+
+  void _showCashPaymentDialog() {
+    showDialog(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          title: const Text('Cash Payment'),
+          content: const Text(
+            'Please pay the rental amount at the pickup location.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.pop(dialogContext);
+              },
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                Navigator.pop(dialogContext);
+
+                if (!mounted || _isCreatingBooking) return;
+
+                setState(() => _isCreatingBooking = true);
+
+                context.read<BookingBloc>().add(
+                  CreateBookingEvent(_buildBookingRequest()),
+                );
+              },
+              child: const Text('Confirm'),
+            ),
+          ],
+        );
+      },
     );
   }
 
@@ -135,7 +169,7 @@ class _ChoosePaymentScreenState extends State<ChoosePaymentScreen> {
           pickupLocation: widget.pickupLocation,
           returnLocation: widget.returnLocation,
           selectedServices: widget.selectedServices,
-          paymentMethod: selectedPayment,
+          paymentMethod: 'Cash',
           totalPrice: widget.totalPrice,
         ),
       ),
@@ -144,321 +178,168 @@ class _ChoosePaymentScreenState extends State<ChoosePaymentScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-
     return BlocListener<BookingBloc, BookingState>(
       listener: (context, state) {
-        if (!_isCreating) return;
+        if (!_isCreatingBooking) return;
 
         if (state is BookingCreated) {
           _openConfirmation(state.booking);
         } else if (state is BookingError) {
-          setState(() => _isCreating = false);
+          setState(() => _isCreatingBooking = false);
+
           ScaffoldMessenger.of(
             context,
           ).showSnackBar(SnackBar(content: Text(state.failure.message)));
         }
       },
       child: Scaffold(
+        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
         appBar: AppBar(
-          title: const Text('Payment Methods'),
-          leading: AppBackButton(),
+          title: const Text(
+            'Choose Payment',
+            style: TextStyle(fontWeight: FontWeight.w600),
+          ),
+          centerTitle: true,
+          elevation: 0,
         ),
         body: SafeArea(
           child: Column(
             children: [
               Expanded(
                 child: SingleChildScrollView(
-                  padding: EdgeInsets.all(AppDimensions.cardPadding),
+                  padding: EdgeInsets.all(20.w),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      _VehiclePaymentCard(
-                        vehicle: widget.vehicle,
-                        rentalDays: widget.rentalDays,
-                      ),
-
-                      SizedBox(height: 20.h),
-
-                      Text(
-                        'Booking Total',
-                        style: theme.textTheme.titleSmall?.copyWith(
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-
-                      SizedBox(height: 4.h),
-
-                      Text(
-                        'Includes rental and additional services',
-                        style: theme.textTheme.bodySmall,
-                      ),
-
-                      SizedBox(height: 6.h),
-
-                      Align(
-                        alignment: Alignment.centerRight,
-                        child: Text(
-                          '\$${widget.totalPrice.toStringAsFixed(2)}',
-                          style: theme.textTheme.headlineMedium?.copyWith(
-                            fontWeight: FontWeight.w800,
-                            color: theme.colorScheme.primary,
-                          ),
-                        ),
-                      ),
-
-                      SizedBox(height: 24.h),
+                      _buildAmountCard(),
+                      SizedBox(height: 28.h),
 
                       Text(
                         'Payment Method',
-                        style: theme.textTheme.titleSmall?.copyWith(
+                        style: TextStyle(
+                          fontSize: 18.sp,
                           fontWeight: FontWeight.w700,
                         ),
                       ),
 
                       SizedBox(height: 12.h),
 
-                      _PaymentMethodTile(
-                        value: 'Visa',
-                        title: 'Visa •••• 4242',
-                        subtitle: 'Expires 12/25',
-                        icon: Icons.credit_card_outlined,
-                        selected: selectedPayment == 'Visa',
-                        onTap: () {
-                          setState(() {
-                            selectedPayment = 'Visa';
-                          });
-                        },
-                      ),
-
-                      SizedBox(height: 10.h),
-
-                      _PaymentMethodTile(
-                        value: 'ABA Pay',
-                        title: 'ABA Pay',
-                        subtitle: 'Direct mobile banking',
-                        icon: Icons.account_balance_outlined,
-                        selected: selectedPayment == 'ABA Pay',
-                        onTap: () {
-                          setState(() {
-                            selectedPayment = 'ABA Pay';
-                          });
-                        },
-                      ),
-
-                      SizedBox(height: 10.h),
-
-                      _PaymentMethodTile(
-                        value: 'KHQR',
-                        title: 'KHQR',
-                        subtitle: 'Scan to pay securely',
+                      _buildPaymentMethod(
+                        value: 'khqr',
+                        title: 'KHQR / Bakong',
+                        subtitle: 'Pay securely using KHQR or Bakong',
                         icon: Icons.qr_code_2_rounded,
-                        selected: selectedPayment == 'KHQR',
-                        onTap: () {
-                          setState(() {
-                            selectedPayment = 'KHQR';
-                          });
-                        },
+                      ),
+
+                      SizedBox(height: 12.h),
+
+                      _buildPaymentMethod(
+                        value: 'cash',
+                        title: 'Cash',
+                        subtitle: 'Pay at the vehicle pickup location',
+                        icon: Icons.payments_outlined,
                       ),
 
                       SizedBox(height: 24.h),
 
-                      Container(
-                        width: double.infinity,
-                        padding: EdgeInsets.all(14.w),
-                        decoration: BoxDecoration(
-                          color: theme.colorScheme.primaryContainer,
-                          borderRadius: BorderRadius.circular(12.r),
-                        ),
-                        child: Row(
-                          children: [
-                            Icon(
-                              Icons.lock_outline_rounded,
-                              color: theme.colorScheme.primary,
-                            ),
-                            SizedBox(width: 10.w),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    'Secure & Encrypted Payment',
-                                    style: theme.textTheme.labelLarge?.copyWith(
-                                      fontWeight: FontWeight.w700,
-                                    ),
-                                  ),
-                                  SizedBox(height: 3.h),
-                                  Text(
-                                    'Your payment details are protected.',
-                                    style: theme.textTheme.bodySmall,
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
+                      _buildSecurityInfo(),
                     ],
                   ),
                 ),
               ),
 
-              // Padding(
-              //   padding: EdgeInsets.fromLTRB(16.w, 8.h, 16.w, 16.h),
-              //   child: SizedBox(
-              //     width: double.infinity,
-              //     height: 52.h,
-              //     child: ElevatedButton(
-              //       onPressed: _payNow,
-              //       child: Row(
-              //         mainAxisAlignment: MainAxisAlignment.center,
-              //         children: [
-              //           const Icon(Icons.lock_outline_rounded),
-              //           SizedBox(width: 8.w),
-              //           Text('Pay Now \$${widget.totalPrice.toStringAsFixed(0)}'),
-              //         ],
-              //       ),
-              //     ),
-              //   ),
-              // ),
+              _buildBottomButton(),
             ],
           ),
         ),
-        bottomNavigationBar: AppBookingBottomBar(
-          label: _isCreating
-              ? 'Creating booking...'
-              : 'Pay Now \$${widget.totalPrice.toStringAsFixed(0)}',
-          icon: Icons.lock_outline_rounded,
-          onPressed: _payNow,
-          enabled: !_isCreating,
-        ),
       ),
     );
   }
-}
 
-class _VehiclePaymentCard extends StatelessWidget {
-  final Vehicle vehicle;
-  final int rentalDays;
-
-  const _VehiclePaymentCard({required this.vehicle, required this.rentalDays});
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-
-    return Card(
-      child: Padding(
-        padding: EdgeInsets.all(10.w),
-        child: Row(
-          children: [
-            ClipRRect(
-              borderRadius: BorderRadius.circular(10.r),
-              child: SizedBox(
-                width: 80.w,
-                height: 65.h,
-                child: vehicle.images.isNotEmpty
-                    ? Image.network(
-                        vehicle.images.first.fileUrl,
-                        fit: BoxFit.cover,
-                        errorBuilder: (_, __, ___) {
-                          return const Icon(Icons.directions_car_outlined);
-                        },
-                      )
-                    : Container(
-                        color: theme.colorScheme.surfaceContainerHighest,
-                        child: Icon(
-                          Icons.directions_car_outlined,
-                          color: theme.colorScheme.onSurfaceVariant,
-                        ),
-                      ),
-              ),
+  Widget _buildAmountCard() {
+    return Container(
+      width: double.infinity,
+      padding: EdgeInsets.all(20.w),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(18.r),
+        color: Theme.of(context).cardColor,
+        border: Border.all(color: Colors.grey.withValues(alpha: 0.15)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Total Amount',
+            style: TextStyle(fontSize: 14.sp, color: Colors.grey.shade600),
+          ),
+          SizedBox(height: 8.h),
+          Text(
+            '\$${widget.totalPrice.toStringAsFixed(2)}',
+            style: TextStyle(
+              fontSize: 30.sp,
+              fontWeight: FontWeight.w800,
+              color: AppColors.primary,
             ),
-
-            SizedBox(width: 12.w),
-
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    '${vehicle.brand} ${vehicle.model}',
-                    style: theme.textTheme.titleSmall?.copyWith(
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-
-                  SizedBox(height: 4.h),
-
-                  Text(
-                    '$rentalDays day rental',
-                    style: theme.textTheme.bodySmall,
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
+          ),
+          SizedBox(height: 6.h),
+          Text(
+            '${widget.vehicle.brand} ${widget.vehicle.model}'
+            ' • ${widget.rentalDays} ${widget.rentalDays == 1 ? 'day' : 'days'}',
+            style: TextStyle(fontSize: 13.sp, color: Colors.grey.shade600),
+          ),
+        ],
       ),
     );
   }
-}
 
-class _PaymentMethodTile extends StatelessWidget {
-  final String value;
-  final String title;
-  final String subtitle;
-  final IconData icon;
-  final bool selected;
-  final VoidCallback onTap;
-
-  const _PaymentMethodTile({
-    required this.value,
-    required this.title,
-    required this.subtitle,
-    required this.icon,
-    required this.selected,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final softBorder = theme.brightness == Brightness.dark
-        ? AppColors.darkBorder
-        : AppColors.borderLight;
+  Widget _buildPaymentMethod({
+    required String value,
+    required String title,
+    required String subtitle,
+    required IconData icon,
+  }) {
+    final bool isSelected = _selectedPaymentMethod == value;
 
     return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(12.r),
-      child: Container(
-        padding: EdgeInsets.all(12.w),
+      borderRadius: BorderRadius.circular(16.r),
+      onTap: () {
+        setState(() {
+          _selectedPaymentMethod = value;
+        });
+      },
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        width: double.infinity,
+        padding: EdgeInsets.all(16.w),
         decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(12.r),
+          borderRadius: BorderRadius.circular(16.r),
+          color: Theme.of(context).cardColor,
           border: Border.all(
-            color: selected ? theme.colorScheme.primary : softBorder,
-            width: selected ? 1.5 : 1,
+            color: isSelected
+                ? AppColors.primary
+                : Colors.grey.withValues(alpha: 0.18),
+            width: isSelected ? 1.5 : 1,
           ),
         ),
         child: Row(
           children: [
-            Radio<String>(
-              value: value,
-              groupValue: selected ? value : null,
-              onChanged: (_) => onTap(),
-            ),
-
             Container(
-              width: 40.w,
-              height: 40.w,
+              width: 48.w,
+              height: 48.w,
               decoration: BoxDecoration(
-                color: theme.colorScheme.surfaceContainerHighest,
-                borderRadius: BorderRadius.circular(8.r),
+                borderRadius: BorderRadius.circular(14.r),
+                color: isSelected
+                    ? AppColors.primary.withValues(alpha: 0.1)
+                    : Colors.grey.withValues(alpha: 0.08),
               ),
-              child: Icon(icon),
+              child: Icon(
+                icon,
+                size: 26.sp,
+                color: isSelected ? AppColors.primary : Colors.grey.shade600,
+              ),
             ),
 
-            SizedBox(width: 12.w),
+            SizedBox(width: 14.w),
 
             Expanded(
               child: Column(
@@ -466,16 +347,134 @@ class _PaymentMethodTile extends StatelessWidget {
                 children: [
                   Text(
                     title,
-                    style: theme.textTheme.bodyMedium?.copyWith(
+                    style: TextStyle(
+                      fontSize: 16.sp,
                       fontWeight: FontWeight.w700,
                     ),
                   ),
-                  SizedBox(height: 2.h),
-                  Text(subtitle, style: theme.textTheme.bodySmall),
+                  SizedBox(height: 4.h),
+                  Text(
+                    subtitle,
+                    style: TextStyle(
+                      fontSize: 12.sp,
+                      color: Colors.grey.shade600,
+                    ),
+                  ),
                 ],
               ),
             ),
+
+            SizedBox(width: 8.w),
+
+            Container(
+              width: 22.w,
+              height: 22.w,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                border: Border.all(
+                  color: isSelected ? AppColors.primary : Colors.grey.shade400,
+                  width: 2,
+                ),
+              ),
+              child: isSelected
+                  ? Center(
+                      child: Container(
+                        width: 10.w,
+                        height: 10.w,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: AppColors.primary,
+                        ),
+                      ),
+                    )
+                  : null,
+            ),
           ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSecurityInfo() {
+    return Container(
+      width: double.infinity,
+      padding: EdgeInsets.all(16.w),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(14.r),
+        color: Colors.green.withValues(alpha: 0.08),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(Icons.lock_outline_rounded, size: 22.sp, color: Colors.green),
+          SizedBox(width: 12.w),
+          Expanded(
+            child: Text(
+              'Your payment information is handled securely. '
+              'For KHQR/Bakong, scan the QR code using your supported banking app.',
+              style: TextStyle(
+                fontSize: 12.sp,
+                height: 1.5,
+                color: Colors.green.shade800,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildBottomButton() {
+    return Container(
+      padding: EdgeInsets.fromLTRB(20.w, 12.h, 20.w, 20.h),
+      decoration: BoxDecoration(
+        color: Theme.of(context).scaffoldBackgroundColor,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.05),
+            blurRadius: 10,
+            offset: const Offset(0, -3),
+          ),
+        ],
+      ),
+      child: SizedBox(
+        width: double.infinity,
+        height: 52.h,
+        child: ElevatedButton(
+          onPressed: _isCreatingBooking ? null : _continuePayment,
+          style: ElevatedButton.styleFrom(
+            backgroundColor: AppColors.primary,
+            foregroundColor: Colors.white,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(14.r),
+            ),
+            elevation: 0,
+          ),
+          child: _isCreatingBooking
+              ? Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    SizedBox(
+                      width: 22.w,
+                      height: 22.w,
+                      child: const CircularProgressIndicator(
+                        strokeWidth: 2.5,
+                        color: Colors.white,
+                      ),
+                    ),
+                    SizedBox(width: 10.w),
+                    const Text('Creating booking...'),
+                  ],
+                )
+              : Text(
+                  _selectedPaymentMethod == 'khqr'
+                      ? 'Continue to Payment'
+                      : 'Confirm Payment',
+                  style: TextStyle(
+                    fontSize: 16.sp,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
         ),
       ),
     );
