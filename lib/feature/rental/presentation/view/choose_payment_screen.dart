@@ -14,7 +14,7 @@ import 'package:vehicle_rental_system/feature/booking/presentation/bloc/booking_
 import 'package:vehicle_rental_system/feature/vehicle/domain/entity/vehicle.dart';
 import 'package:vehicle_rental_system/feature/rental/presentation/view/booking_confirmation_screen.dart';
 
-class ConfirmScreen extends StatefulWidget {
+class ChoosePaymentScreen extends StatefulWidget {
   final Vehicle vehicle;
 
   final int rentalDays;
@@ -34,7 +34,7 @@ class ConfirmScreen extends StatefulWidget {
   final String pickupLocation;
   final String returnLocation;
 
-  const ConfirmScreen({
+  const ChoosePaymentScreen({
     super.key,
     required this.vehicle,
     required this.rentalDays,
@@ -54,10 +54,10 @@ class ConfirmScreen extends StatefulWidget {
   });
 
   @override
-  State<ConfirmScreen> createState() => _ConfirmScreenState();
+  State<ChoosePaymentScreen> createState() => _ChoosePaymentScreenState();
 }
 
-class _ConfirmScreenState extends State<ConfirmScreen> {
+class _ChoosePaymentScreenState extends State<ChoosePaymentScreen> {
   String selectedPayment = 'KHQR';
 
   bool _isCreating = false;
@@ -160,7 +160,10 @@ class _ConfirmScreenState extends State<ConfirmScreen> {
         }
       },
       child: Scaffold(
-        appBar: AppBar(title: const Text('Payment'), leading: AppBackButton()),
+        appBar: AppBar(
+          title: const Text('Payment Methods'),
+          leading: AppBackButton(),
+        ),
         body: SafeArea(
           child: Column(
             children: [
