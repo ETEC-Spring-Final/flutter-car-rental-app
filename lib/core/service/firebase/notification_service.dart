@@ -1,20 +1,7 @@
 import 'dart:developer';
 
-import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
-
-// @pragma('vm:entry-point')
-// Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
-//   await Firebase.initializeApp();
-
-//   print('======================================');
-//   print('FCM BACKGROUND MESSAGE');
-//   print('Title: ${message.notification?.title}');
-//   print('Body: ${message.notification?.body}');
-//   print('Data: ${message.data}');
-//   print('======================================');
-// }
 
 class NotificationService {
   NotificationService._();

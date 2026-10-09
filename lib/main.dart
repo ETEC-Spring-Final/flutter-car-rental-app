@@ -1,7 +1,4 @@
-import 'dart:developer';
-
 import 'package:firebase_core/firebase_core.dart';
-import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:vehicle_rental_system/app/app.dart';
 import 'package:vehicle_rental_system/app/locale/bloc/locale_bloc.dart';
@@ -23,8 +20,6 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   await Firebase.initializeApp();
-
-  // FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
 
   // notification service
   await NotificationService.instance.initialize();

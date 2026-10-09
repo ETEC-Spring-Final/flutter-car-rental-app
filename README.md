@@ -162,6 +162,14 @@ Customers can browse vehicles, filter and search by brand, type, or model, view 
 - **KHQR / Bakong** payment flow and status check
 - View payment information
 
+### Notifications
+
+- **Push notifications** via **Firebase Cloud Messaging (FCM)**
+- Register and refresh the device FCM token, synced to the backend
+- Foreground notifications rendered as local notifications
+- In-app notification inbox with filters (All, Booking/Payment, Promotion, System)
+- Unread badge counter and "mark as read" / "mark all as read"
+
 ### Account
 
 - Manage user profile
@@ -185,6 +193,7 @@ Customers can browse vehicles, filter and search by brand, type, or model, view 
 | Local Storage        | **shared_preferences**, **flutter_secure_storage**                 |
 | Localization         | **Flutter `gen_l10n`** (English, Khmer)                            |
 | Theming              | Light / Dark theme with BLoC                                       |
+| Push Notifications   | **Firebase Cloud Messaging** (`firebase_core`, `firebase_messaging`), `flutter_local_notifications` |
 | Utilities            | Equatable, fpdart, intl, shimmer, cached_network_image, qr_flutter |
 
 ### Backend — `spring_backend`
@@ -348,7 +357,7 @@ flutter_frontend/
 | `payment`      | KHQR payment and transaction status                               |
 | `favorite`     | Favorite list and toggle state                                    |
 | `profile`      | User profile read/update                                          |
-| `notification` | Notification inbox and read state                                 |
+| `notification` | FCM push notifications and in-app inbox with read state           |
 | `onboarding`   | Splash and onboarding screens                                     |
 
 ---
@@ -449,6 +458,61 @@ Booking history reflects payment state
 
 ---
 
+## 🔔 Push Notifications (FCM)
+
+The app receives real-time push notifications through **Firebase Cloud Messaging**
+and keeps an in-app notification inbox in sync with the backend.
+
+```text
+User logs in / registers / Google OAuth
+      ↓
+NotificationService.getFcmToken()          → Firebase device token
+      ↓
+POST /notifications/device                 → backend stores token (token, deviceType)
+      ↓
+Backend sends push (booking, payment, promotion, system)
+      ↓
+Foreground: FirebaseMessaging.onMessage    → shown via flutter_local_notifications
+Background: system tray notification (channel: payment_notifications)
+      ↓
+In-app inbox: GET /notifications/me/inbox  → NotificationBloc (filters, unread badge)
+```
+
+**Frontend**
+
+- `NotificationService` (singleton in `core/service/firebase/`) is initialized in
+  `main()` after `Firebase.initializeApp()`; it requests permission, creates the
+  Android notification channel, and listens for foreground messages and token refresh
+- The current FCM token is fetched and registered right after
+  login / register / Google OAuth via the `RegisterDeviceUseCase`
+  (`POST /notifications/device`, body `{ "token", "deviceType" }`)
+- On token refresh the app logs the new token (auto re-registration is a pending
+  improvement)
+- `notification_bloc` (`LoadNotificationsEvent`, `MarkNotificationReadEvent`,
+  `MarkAllNotificationsReadEvent`) drives the inbox with optimistic read updates so
+  the unread badge stays in sync
+- `NotificationScreen` groups notifications as **booking**, **payment**,
+  **promotion**, or **system** (mapped from the backend `NotificationTypeEnum`,
+  unknown types fall back to system)
+- `AppNotification` (badge widget) renders the unread count on the home app bar
+
+**Backend**
+
+- Device registration endpoint stores the FCM token per user/device
+- Notification endpoints serve the inbox, unread count, and read actions
+- A notification service dispatches FCM messages for booking, payment, rental
+  lifecycle, and promotion events
+
+**Platform setup**
+
+- Android: `POST_NOTIFICATIONS` permission and a default notification channel
+  (`payment_notifications`) declared in `AndroidManifest.xml`, plus
+  `google-services.json`
+- iOS: notification capability/entitlements and push permission
+- `flutter_local_notifications` renders foreground messages on Android
+
+---
+
 ## 🌐 API Communication
 
 **Frontend**
@@ -484,7 +548,7 @@ Representative endpoints used by the app:
 | Services      | `/services`                                                                                      |
 | Locations     | `/locations`                                                                                     |
 | Payment       | `/v1/bakong/generate-qr`, `/v1/bakong/qr-image`, `/v1/bakong/check-transaction`                  |
-| Notifications | `/notifications/me/inbox`, `/notifications/me/read-all`                                          |
+| Notifications | `/notifications/me/inbox`, `/notifications/me/unread-count`, `/notifications/{id}/read`, `/notifications/me/read-all`, `/notifications/device` |
 
 ---
 
@@ -502,6 +566,7 @@ I worked on **both the Flutter frontend and the Spring Boot backend** of this pr
 - Favorite functionality (add/remove/list)
 - Booking screens: date selection, time selection, duration summary
 - Payment screen with KHQR display
+- **Push notifications** with Firebase Cloud Messaging (FCM): device token registration, foreground handling, and in-app notification inbox
 - Booking history and booking detail
 - **BLoC** state management for every feature
 - **GoRouter** navigation and route guards
@@ -539,6 +604,7 @@ I worked on **both the Flutter frontend and the Spring Boot backend** of this pr
 - **Spring Boot + Spring Security** configuration and how a stateless REST API is protected
 - **Spring Data JPA and Specifications** for dynamic search and filtering queries
 - **Third-party payment integration** with Bakong/KHQR, including QR generation and transaction status checks
+- **Push notification integration** with Firebase Cloud Messaging, from device token registration to foreground/background handling on both client and server
 - **Dependency injection with GetIt** on the client and constructor injection on the server
 - **Localization and theming** as first-class concerns rather than afterthoughts
 - Working across frontend and backend on the same feature, which made API design much easier to reason about
