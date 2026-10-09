@@ -2,34 +2,50 @@ import 'dart:developer';
 
 import 'package:bloc/bloc.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+
 import 'package:vehicle_rental_system/core/constants/storage_keys.dart';
 import 'package:vehicle_rental_system/core/errors/app_exception.dart';
+import 'package:vehicle_rental_system/core/service/firebase/notification_service.dart';
+
 import 'package:vehicle_rental_system/feature/auth/domain/entity/forgot_password_request.dart';
 import 'package:vehicle_rental_system/feature/auth/domain/entity/login_request.dart';
 import 'package:vehicle_rental_system/feature/auth/domain/entity/register_request.dart';
 import 'package:vehicle_rental_system/feature/auth/domain/entity/reset_password_request.dart';
+
 import 'package:vehicle_rental_system/feature/auth/domain/service/oauth2_service.dart';
+
 import 'package:vehicle_rental_system/feature/auth/domain/usecase/forgot_password_use_case.dart';
 import 'package:vehicle_rental_system/feature/auth/domain/usecase/login_use_case.dart';
 import 'package:vehicle_rental_system/feature/auth/domain/usecase/register_use_case.dart';
 import 'package:vehicle_rental_system/feature/auth/domain/usecase/reset_password_use_case.dart';
 
+import 'package:vehicle_rental_system/feature/notification/data/model/device_register_request.dart';
+import 'package:vehicle_rental_system/feature/notification/domain/usecase/register_device_use_case.dart';
+
 part 'auth_event.dart';
 part 'auth_state.dart';
 
 class AuthBloc extends Bloc<AuthEvent, AuthState> {
-  //final AuthRepository repository;
-final LoginUseCase loginUseCase;
+  final LoginUseCase loginUseCase;
   final RegisterUseCase registerUseCase;
   final ForgotPasswordUseCase forgotPasswordUseCase;
   final ResetPasswordUseCase resetPasswordUseCase;
+
+  // NEW
+  final RegisterDeviceUseCase registerDeviceUseCase;
+
   final FlutterSecureStorage secureStorage;
   final OAuth2Service oauth2Service;
+
   AuthBloc({
     required this.loginUseCase,
     required this.registerUseCase,
     required this.forgotPasswordUseCase,
     required this.resetPasswordUseCase,
+
+    // NEW
+    required this.registerDeviceUseCase,
+
     required this.secureStorage,
     required this.oauth2Service,
   }) : super(AuthInitial()) {
@@ -41,8 +57,6 @@ final LoginUseCase loginUseCase;
     on<LogoutRequested>(_onLogout);
     on<OAuthLoginRequested>(_onOAuthLogin);
   }
-
-  //final String key = 'jwt_token';
 
   String _getErrorMessage(Object error) {
     if (error is AppException) {
@@ -58,117 +72,173 @@ final LoginUseCase loginUseCase;
     return 'Something went wrong. Please try again.';
   }
 
+  // ============================================================
+  // LOGIN
+  // ============================================================
+
   Future<void> _onLogin(LoginSubmitted event, Emitter<AuthState> emit) async {
     emit(AuthLoading());
+
     try {
-      /*
-
-      final request = LoginRequest(
-        email: event.email,
-        password: event.password,
-      );
-      // get JWT token from repository
-      final resopnse = await repository.login(request);
-
-      */
-
       final request = LoginRequest(
         email: event.email,
         password: event.password,
       );
 
-      final resopnse = await loginUseCase(request);
+      // 1. Login
+      final response = await loginUseCase(request);
 
-      await secureStorage.write(key: StorageKeys.jwtKey, value: resopnse.token);
+      // 2. Save JWT
+      await secureStorage.write(key: StorageKeys.jwtKey, value: response.token);
 
       log('Login Successful');
       log('JWT token saved');
+
+      // ========================================================
+      // 3. GET REAL FCM TOKEN
+      // ========================================================
+
+      try {
+        final fcmToken = await NotificationService.instance.getFcmToken();
+
+        log('FCM token obtained: $fcmToken');
+
+        // ======================================================
+        // 4. REGISTER FCM TOKEN WITH BACKEND
+        // ======================================================
+
+        if (fcmToken != null && fcmToken.isNotEmpty) {
+          await registerDeviceUseCase(
+            DeviceRegisterRequest(fcmToken: fcmToken, deviceType: 'ANDROID'),
+          );
+
+          log('FCM token registered successfully');
+        } else {
+          log('FCM token is null or empty');
+        }
+      } catch (e, stackTrace) {
+        // FCM registration failure should NOT
+        // make login fail.
+
+        log('Failed to register FCM token', error: e, stackTrace: stackTrace);
+      }
+
+      // 5. Login completed
       emit(AuthAuthenticated());
-      //emit(AuthSuccess());
     } catch (e, stackTrace) {
       final message = _getErrorMessage(e);
 
-      log("Login failed: $message", error: e, stackTrace: stackTrace);
-      emit(AuthFailure(message));
+      log('Login failed: $message', error: e, stackTrace: stackTrace);
 
-      // emit(AuthFailure("Login failed: $e"));
-      // log("Login failed: $e");
+      emit(AuthFailure(message));
     }
   }
+
+  // ============================================================
+  // REGISTER
+  // ============================================================
 
   Future<void> _onRegister(
     RegisterSubmitted event,
     Emitter<AuthState> emit,
   ) async {
     emit(AuthLoading());
+
     try {
       final request = RegisterRequest(
         firstName: event.firstName,
         lastName: event.lastName,
         email: event.email,
         password: event.password,
-        //confirmPassword: event.confirmPassword,
         phone: event.phone,
         gender: event.gender,
       );
 
       final response = await registerUseCase(request);
 
-      // if register API  return JWT
-      // save it and authenticated automatically
-      if (response.token.isEmpty) {
+      /*
+       * If registration returns a JWT,
+       * automatically authenticate the user.
+       */
+
+      if (response.token.isNotEmpty) {
         await secureStorage.write(
           key: StorageKeys.jwtKey,
           value: response.token,
         );
-        log('Registration successful.');
+
+        log('Registration successful');
         log('JWT token saved');
+
+        // Get FCM token after automatic login
+        try {
+          final fcmToken = await NotificationService.instance.getFcmToken();
+
+          if (fcmToken != null && fcmToken.isNotEmpty) {
+            await registerDeviceUseCase(
+              DeviceRegisterRequest(fcmToken: fcmToken, deviceType: 'ANDROID'),
+            );
+
+            log('FCM token registered successfully');
+          }
+        } catch (e, stackTrace) {
+          log(
+            'Failed to register FCM token after registration',
+            error: e,
+            stackTrace: stackTrace,
+          );
+        }
+
         emit(AuthAuthenticated());
       } else {
-        // if registration doesn't return JWT
         emit(AuthSuccess());
       }
-
-      //await repository.register(request);
-
-      emit(AuthSuccess());
     } catch (e, stackTrace) {
       final message = _getErrorMessage(e);
 
-      log("Registration failed: $message", error: e, stackTrace: stackTrace);
+      log('Registration failed: $message', error: e, stackTrace: stackTrace);
 
       emit(AuthFailure(message));
-      //emit(AuthFailure());
-      //log("Registration failed: $e");
     }
   }
+
+  // ============================================================
+  // FORGOT PASSWORD
+  // ============================================================
 
   Future<void> _onForgotPassword(
     ForgotPasswordSubmitted event,
     Emitter<AuthState> emit,
   ) async {
     emit(AuthLoading());
+
     try {
       final request = ForgotPasswordRequest(email: event.email);
 
       final message = await forgotPasswordUseCase(request);
 
       log('Password reset link sent');
+
       emit(ForgotPasswordSuccess(message));
     } catch (e, stackTrace) {
       final message = _getErrorMessage(e);
 
-      log("Forgot password failed: $message", error: e, stackTrace: stackTrace);
+      log('Forgot password failed: $message', error: e, stackTrace: stackTrace);
 
       emit(AuthFailure(message));
     }
   }
+
+  // ============================================================
+  // RESET PASSWORD
+  // ============================================================
 
   Future<void> _onResetPassword(
     ResetPasswordSubmitted event,
     Emitter<AuthState> emit,
   ) async {
     emit(AuthLoading());
+
     try {
       final request = ResetPasswordRequest(
         token: event.token,
@@ -178,41 +248,74 @@ final LoginUseCase loginUseCase;
       await resetPasswordUseCase(request);
 
       log('Password reset successful');
+
       emit(ResetPasswordSuccess());
     } catch (e, stackTrace) {
       final message = _getErrorMessage(e);
 
-      log("Reset password failed: $message", error: e, stackTrace: stackTrace);
+      log('Reset password failed: $message', error: e, stackTrace: stackTrace);
 
       emit(AuthFailure(message));
     }
   }
+
+  // ============================================================
+  // OAUTH LOGIN
+  // ============================================================
 
   Future<void> _onOAuthLogin(
     OAuthLoginRequested event,
     Emitter<AuthState> emit,
   ) async {
     emit(AuthLoading());
+
     try {
       final token = await oauth2Service.authenticate(provider: event.provider);
 
       if (token == null || token.isEmpty) {
         emit(AuthFailure('OAuth sign-in was cancelled.'));
+
         return;
       }
 
+      // Save JWT
       await secureStorage.write(key: StorageKeys.jwtKey, value: token);
 
       log('OAuth login successful');
       log('JWT token saved');
+
+      // Register FCM token
+      try {
+        final fcmToken = await NotificationService.instance.getFcmToken();
+
+        if (fcmToken != null && fcmToken.isNotEmpty) {
+          await registerDeviceUseCase(
+            DeviceRegisterRequest(fcmToken: fcmToken, deviceType: 'ANDROID'),
+          );
+
+          log('FCM token registered successfully');
+        }
+      } catch (e, stackTrace) {
+        log(
+          'Failed to register FCM token after OAuth login',
+          error: e,
+          stackTrace: stackTrace,
+        );
+      }
+
       emit(AuthAuthenticated());
     } catch (e, stackTrace) {
       final message = _getErrorMessage(e);
 
-      log("OAuth login failed: $message", error: e, stackTrace: stackTrace);
+      log('OAuth login failed: $message', error: e, stackTrace: stackTrace);
+
       emit(AuthFailure(message));
     }
   }
+
+  // ============================================================
+  // CHECK AUTH STATUS
+  // ============================================================
 
   Future<void> _onCheckAuthStatus(
     CheckAuthStatus event,
@@ -222,6 +325,7 @@ final LoginUseCase loginUseCase;
 
     try {
       final token = await secureStorage.read(key: StorageKeys.jwtKey);
+
       if (token != null && token.isNotEmpty) {
         log('Existing JWT token found');
         log('User is already authenticated');
@@ -236,11 +340,19 @@ final LoginUseCase loginUseCase;
     } catch (e, stackTrace) {
       final message = _getErrorMessage(e);
 
-      log("Registration failed: $message", error: e, stackTrace: stackTrace);
+      log(
+        'Check auth status failed: $message',
+        error: e,
+        stackTrace: stackTrace,
+      );
 
       emit(AuthFailure(message));
     }
   }
+
+  // ============================================================
+  // LOGOUT
+  // ============================================================
 
   Future<void> _onLogout(LogoutRequested event, Emitter<AuthState> emit) async {
     emit(AuthLoading());
@@ -256,11 +368,6 @@ final LoginUseCase loginUseCase;
       log('Logout failed', error: e, stackTrace: stackTrace);
 
       emit(AuthFailure('Unable to logout. Please try again.'));
-      // final message = _getErrorMessage(e);
-
-      // log("Registration failed: $message", error: e, stackTrace: stackTrace);
-
-      // emit(AuthFailure(message));
     }
   }
 }

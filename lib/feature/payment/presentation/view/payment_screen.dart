@@ -464,7 +464,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
         _detailRow(
           theme,
           'Total',
-          '\$\${rental.totalPrice.toStringAsFixed(2)}',
+          '\$${rental.totalPrice.toStringAsFixed(2)}',
           emphasize: true,
         ),
       ],

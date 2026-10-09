@@ -154,6 +154,7 @@ class ApiConstants {
   // notification
   static const String inboxMe = '/notifications/me/inbox';
   static String notify(int userId) => '/notifications/$userId/notify';
+  static const String device = '/notifications/device';
 
   // favorite
   static const String favorite = '/favorites';

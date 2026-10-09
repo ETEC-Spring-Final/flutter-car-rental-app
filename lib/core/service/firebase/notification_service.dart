@@ -1,5 +1,20 @@
+import 'dart:developer';
+
+import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+
+// @pragma('vm:entry-point')
+// Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
+//   await Firebase.initializeApp();
+
+//   print('======================================');
+//   print('FCM BACKGROUND MESSAGE');
+//   print('Title: ${message.notification?.title}');
+//   print('Body: ${message.notification?.body}');
+//   print('Data: ${message.data}');
+//   print('======================================');
+// }
 
 class NotificationService {
   NotificationService._();
@@ -11,11 +26,37 @@ class NotificationService {
   final FlutterLocalNotificationsPlugin _localNotifications =
       FlutterLocalNotificationsPlugin();
 
+  /// Initialize Firebase notification service
   Future<void> initialize() async {
-    // Request permission
     await _requestPermission();
 
-    // Initialize local notification
+    await _initializeLocalNotifications();
+
+    await _createNotificationChannel();
+
+    await _printFcmToken();
+
+    _listenToForegroundMessages();
+
+    _listenToTokenRefresh();
+  }
+
+  /// Request notification permission
+  Future<void> _requestPermission() async {
+    final settings = await _firebaseMessaging.requestPermission(
+      alert: true,
+      badge: true,
+      sound: true,
+    );
+
+    log(
+      'Notification permission: '
+      '${settings.authorizationStatus}',
+    );
+  }
+
+  /// Initialize flutter_local_notifications
+  Future<void> _initializeLocalNotifications() async {
     const androidSettings = AndroidInitializationSettings(
       '@mipmap/ic_launcher',
     );
@@ -25,8 +66,10 @@ class NotificationService {
     );
 
     await _localNotifications.initialize(settings: initializationSettings);
+  }
 
-    // Create notification channel
+  /// Create Android notification channel
+  Future<void> _createNotificationChannel() async {
     const channel = AndroidNotificationChannel(
       'payment_notifications',
       'Payment Notifications',
@@ -39,36 +82,53 @@ class NotificationService {
           AndroidFlutterLocalNotificationsPlugin
         >()
         ?.createNotificationChannel(channel);
+  }
 
-    // Get FCM token
+  /// Get current FCM token
+  Future<String?> getFcmToken() async {
     final token = await _firebaseMessaging.getToken();
 
-    print('======================================');
-    print('FCM TOKEN');
-    print(token);
-    print('======================================');
+    log('======================================');
+    log('🔥 FCM TOKEN');
+    log('$token');
+    log('======================================');
 
-    // Listen for foreground messages
+    return token;
+  }
+
+  /// Only print token during initialization
+  Future<void> _printFcmToken() async {
+    await getFcmToken();
+  }
+
+  /// Listen when application is in foreground
+  void _listenToForegroundMessages() {
     FirebaseMessaging.onMessage.listen(_handleForegroundMessage);
   }
 
-  Future<void> _requestPermission() async {
-    final settings = await _firebaseMessaging.requestPermission(
-      alert: true,
-      badge: true,
-      sound: true,
-    );
+  /// Listen when Firebase changes the token
+  void _listenToTokenRefresh() {
+    FirebaseMessaging.instance.onTokenRefresh.listen((newToken) {
+      log('======================================');
+      log('🔥 FCM TOKEN REFRESHED');
+      log(newToken);
+      log('======================================');
 
-    print('Notification permission: ${settings.authorizationStatus}');
+      // IMPORTANT:
+      // Send this new token to backend.
+      //
+      // We will implement that through your device repository.
+    });
   }
 
+  /// Handle foreground notification
   Future<void> _handleForegroundMessage(RemoteMessage message) async {
-    print('======================================');
-    print('FCM MESSAGE RECEIVED');
-    print('Title: ${message.notification?.title}');
-    print('Body: ${message.notification?.body}');
-    print('Data: ${message.data}');
-    print('======================================');
+    log('======================================');
+    log('🔥 FCM MESSAGE RECEIVED');
+    log('Title: ${message.notification?.title}');
+    log('Body: ${message.notification?.body}');
+    log('Data: ${message.data}');
+    log('======================================');
 
     final notification = message.notification;
 

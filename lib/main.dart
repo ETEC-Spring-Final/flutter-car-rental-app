@@ -21,17 +21,13 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
   await Firebase.initializeApp();
 
-  final messaging = FirebaseMessaging.instance;
+  // FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
 
+  // notification service
   await NotificationService.instance.initialize();
-
-  await messaging.requestPermission(alert: true, badge: true, sound: true);
-
-  final token = await messaging.getToken();
-
-  log('FCM Token: $token');
 
   await configureDependencies();
 

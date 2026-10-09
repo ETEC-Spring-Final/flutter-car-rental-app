@@ -13,6 +13,7 @@ import 'package:vehicle_rental_system/feature/auth/domain/usecase/login_use_case
 import 'package:vehicle_rental_system/feature/auth/domain/usecase/register_use_case.dart';
 import 'package:vehicle_rental_system/feature/auth/domain/usecase/reset_password_use_case.dart';
 import 'package:vehicle_rental_system/feature/auth/presentation/bloc/auth_bloc.dart';
+import 'package:vehicle_rental_system/feature/notification/domain/usecase/register_device_use_case.dart';
 
 final sl = GetIt.instance;
 
@@ -48,9 +49,7 @@ void authInjection() {
     () => ResetPasswordUseCase(sl<AuthRepository>()),
   );
 
-  sl.registerLazySingleton<OAuth2Service>(
-    () => OAuth2ServiceImpl(),
-  );
+  sl.registerLazySingleton<OAuth2Service>(() => OAuth2ServiceImpl());
 
   // bloc
   sl.registerFactory(
@@ -59,6 +58,7 @@ void authInjection() {
       registerUseCase: sl<RegisterUseCase>(),
       forgotPasswordUseCase: sl<ForgotPasswordUseCase>(),
       resetPasswordUseCase: sl<ResetPasswordUseCase>(),
+      registerDeviceUseCase: sl<RegisterDeviceUseCase>(),
       secureStorage: sl<FlutterSecureStorage>(),
       oauth2Service: sl<OAuth2Service>(),
     ),
